@@ -1,0 +1,1927 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>The Blood Commons — Pakistan</title>
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+
+    <!-- Leaflet.js for Maps -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js">
+    </script>
+
+    <!-- Supabase JS Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2">
+    </script>
+
+    <style>
+        /* ============================================================
+                   COMPLETE STYLES
+                   ============================================================ */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #dc2626;
+            --primary-dark: #b91c1c;
+            --primary-light: #fef2f2;
+            --bg: #f1f5f9;
+            --text: #0f172a;
+            --text-muted: #64748b;
+            --border: #e2e8f0;
+            --radius: 16px;
+            --transition: 0.25s ease;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* ========== SIDEBAR ========== */
+        .sidebar {
+            width: 260px;
+            background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%);
+            color: #e2e8f0;
+            padding: 28px 18px;
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            z-index: 1000;
+            transition: transform 0.3s ease;
+            overflow-y: auto;
+        }
+
+        .sidebar-brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding-bottom: 28px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            margin-bottom: 24px;
+        }
+
+        .sidebar-brand i {
+            font-size: 2rem;
+            color: var(--primary);
+            background: rgba(239, 68, 68, 0.15);
+            padding: 10px;
+            border-radius: 14px;
+        }
+
+        .sidebar-brand h1 {
+            font-size: 1.2rem;
+            font-weight: 700;
+            line-height: 1.2;
+        }
+
+        .sidebar-brand span {
+            font-size: 0.7rem;
+            color: #94a3b8;
+            display: block;
+            font-weight: 400;
+        }
+
+        .sidebar-label {
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            color: #64748b;
+            margin: 20px 0 10px 8px;
+            font-weight: 600;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 12px 16px;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all var(--transition);
+            margin-bottom: 2px;
+            font-weight: 500;
+            color: #cbd5e1;
+            border: none;
+            background: transparent;
+            width: 100%;
+            text-align: left;
+            font-size: 0.95rem;
+        }
+
+        .nav-item:hover {
+            background: rgba(255, 255, 255, 0.06);
+            color: #f1f5f9;
+        }
+
+        .nav-item.active {
+            background: rgba(239, 68, 68, 0.15);
+            color: #f1f5f9;
+            box-shadow: inset 3px 0 0 var(--primary);
+        }
+
+        .nav-item .badge {
+            margin-left: auto;
+            background: rgba(239, 68, 68, 0.2);
+            color: var(--primary);
+            font-size: 0.65rem;
+            padding: 2px 10px;
+            border-radius: 20px;
+        }
+
+        .sidebar-footer {
+            margin-top: auto;
+            padding-top: 20px;
+            border-top: 1px solid rgba(255, 255, 255, 0.06);
+            font-size: 0.75rem;
+            color: #475569;
+            text-align: center;
+        }
+
+        .sidebar-footer i {
+            color: var(--primary);
+        }
+
+        /* ========== MAIN ========== */
+        .main-content {
+            margin-left: 260px;
+            flex: 1;
+            padding: 32px 40px 40px 40px;
+            min-height: 100vh;
+        }
+
+        /* ========== HEADER ========== */
+        .top-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 32px;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+
+        .top-header h2 {
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        .top-header h2 i {
+            color: var(--primary);
+            margin-right: 10px;
+        }
+
+        .top-header .subtitle {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            font-weight: 400;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .header-actions .btn-icon {
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 40px;
+            padding: 8px 16px;
+            font-weight: 500;
+            font-size: 0.85rem;
+            color: var(--text);
+            cursor: pointer;
+            transition: all var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .header-actions .btn-icon:hover {
+            background: var(--bg);
+            border-color: #cbd5e1;
+        }
+
+        .user-display {
+            display: none;
+            align-items: center;
+            gap: 10px;
+            background: white;
+            padding: 6px 16px 6px 12px;
+            border-radius: 40px;
+            border: 1px solid var(--border);
+            font-weight: 500;
+            font-size: 0.9rem;
+            color: var(--text);
+        }
+
+        .user-display.show {
+            display: flex;
+        }
+
+        .user-display .avatar {
+            width: 32px;
+            height: 32px;
+            background: var(--primary);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 0.9rem;
+        }
+
+        .user-display .user-name {
+            max-width: 120px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .user-display .user-role {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            font-weight: 400;
+        }
+
+        .mobile-toggle {
+            display: none;
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            color: var(--text);
+            cursor: pointer;
+            padding: 6px;
+        }
+
+        /* ========== PAGES ========== */
+        .page-section {
+            display: none;
+            animation: fadeUp 0.4s ease;
+        }
+
+        .page-section.active {
+            display: block;
+        }
+
+        @keyframes fadeUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* ========== LANDING ========== */
+        .landing-hero {
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            border-radius: var(--radius);
+            padding: 48px;
+            color: white;
+            margin-bottom: 32px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .landing-hero::before {
+            content: '';
+            position: absolute;
+            top: -40%;
+            right: -10%;
+            width: 350px;
+            height: 350px;
+            background: rgba(239, 68, 68, 0.08);
+            border-radius: 50%;
+            pointer-events: none;
+        }
+
+        .landing-hero .hero-content {
+            position: relative;
+            z-index: 1;
+            max-width: 650px;
+        }
+
+        .landing-hero .hero-badge {
+            display: inline-block;
+            background: rgba(239, 68, 68, 0.2);
+            color: #fca5a5;
+            padding: 4px 16px;
+            border-radius: 40px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-bottom: 16px;
+            border: 1px solid rgba(239, 68, 68, 0.2);
+        }
+
+        .landing-hero h1 {
+            font-size: 2.6rem;
+            font-weight: 800;
+            line-height: 1.1;
+            margin-bottom: 16px;
+        }
+
+        .landing-hero h1 span {
+            color: var(--primary);
+        }
+
+        .landing-hero p {
+            font-size: 1.05rem;
+            color: #cbd5e1;
+            line-height: 1.7;
+            margin-bottom: 24px;
+            max-width: 540px;
+        }
+
+        .hero-stats-mini {
+            display: flex;
+            gap: 32px;
+            flex-wrap: wrap;
+        }
+
+        .hero-stats-mini .stat-item .number {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: white;
+        }
+
+        .hero-stats-mini .stat-item .label {
+            font-size: 0.85rem;
+            color: #94a3b8;
+        }
+
+        /* ========== STATS ========== */
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+            gap: 16px;
+            margin-bottom: 32px;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: var(--radius);
+            padding: 20px 22px;
+            border: 1px solid var(--border);
+            transition: transform 0.15s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+        }
+
+        .stat-card .stat-icon {
+            font-size: 1.4rem;
+            color: var(--primary);
+            background: var(--primary-light);
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 12px;
+            margin-bottom: 8px;
+        }
+
+        .stat-card .stat-number {
+            font-size: 1.6rem;
+            font-weight: 700;
+            color: var(--text);
+            line-height: 1.2;
+        }
+
+        .stat-card .stat-label {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        .stat-card .stat-change {
+            font-size: 0.7rem;
+            font-weight: 600;
+            padding: 2px 10px;
+            border-radius: 20px;
+            display: inline-block;
+            margin-top: 4px;
+        }
+
+        .stat-card .stat-change.danger {
+            color: #dc2626;
+            background: #fef2f2;
+        }
+
+        .stat-card .stat-change.success {
+            color: #16a34a;
+            background: #f0fdf4;
+        }
+
+        /* ========== ABOUT ========== */
+        .about-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 20px;
+            margin-bottom: 32px;
+        }
+
+        .about-card {
+            background: white;
+            border-radius: var(--radius);
+            padding: 24px;
+            border: 1px solid var(--border);
+            transition: transform 0.2s;
+        }
+
+        .about-card:hover {
+            transform: translateY(-3px);
+        }
+
+        .about-card .icon-circle {
+            width: 48px;
+            height: 48px;
+            background: var(--primary-light);
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.4rem;
+            color: var(--primary);
+            margin-bottom: 12px;
+        }
+
+        .about-card h3 {
+            font-size: 1rem;
+            font-weight: 700;
+            margin-bottom: 6px;
+        }
+
+        .about-card p {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+
+        /* ========== ROLE CARDS ========== */
+        .role-selector-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 18px;
+            margin-top: 8px;
+        }
+
+        .role-card {
+            background: white;
+            border-radius: var(--radius);
+            padding: 28px 20px;
+            text-align: center;
+            border: 2px solid var(--border);
+            cursor: pointer;
+            transition: all var(--transition);
+        }
+
+        .role-card:hover {
+            border-color: var(--primary);
+            transform: translateY(-4px);
+            box-shadow: 0 12px 30px rgba(239, 68, 68, 0.12);
+        }
+
+        .role-card .role-icon {
+            font-size: 2.4rem;
+            color: var(--primary);
+            margin-bottom: 10px;
+            display: block;
+        }
+
+        .role-card h4 {
+            font-size: 1rem;
+            font-weight: 700;
+        }
+
+        .role-card p {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            line-height: 1.5;
+            margin-top: 4px;
+        }
+
+        .role-card .role-badge {
+            display: inline-block;
+            margin-top: 8px;
+            padding: 3px 14px;
+            border-radius: 30px;
+            font-size: 0.65rem;
+            font-weight: 600;
+            background: #f1f5f9;
+            color: #475569;
+        }
+
+        .role-card .role-badge.highlight {
+            background: var(--primary-light);
+            color: var(--primary);
+        }
+
+        /* ========== PANELS ========== */
+        .panel {
+            background: white;
+            border-radius: var(--radius);
+            padding: 24px 28px;
+            border: 1px solid var(--border);
+            margin-bottom: 24px;
+        }
+
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .panel-header h3 {
+            font-size: 1.05rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .panel-header h3 i {
+            color: var(--primary);
+        }
+
+        .panel-action {
+            font-size: 0.85rem;
+            color: var(--primary);
+            font-weight: 600;
+            cursor: pointer;
+            background: none;
+            border: none;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .panel-action:hover {
+            color: var(--primary-dark);
+        }
+
+        /* ========== FORMS ========== */
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        .form-grid .full-width {
+            grid-column: 1 / -1;
+        }
+
+        .form-group {
+            margin-bottom: 4px;
+        }
+
+        .form-group label {
+            display: block;
+            font-weight: 600;
+            font-size: 0.8rem;
+            color: var(--text);
+            margin-bottom: 4px;
+        }
+
+        .form-group label .required {
+            color: var(--primary);
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 10px 14px;
+            border: 1px solid #d1d9e8;
+            border-radius: 10px;
+            font-size: 0.95rem;
+            background: #fafbfc;
+            transition: border 0.2s, box-shadow 0.2s;
+            font-family: inherit;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.12);
+            background: white;
+        }
+
+        /* ========== BUTTONS ========== */
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+            padding: 12px 28px;
+            border: none;
+            border-radius: 40px;
+            font-weight: 600;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(220, 38, 38, 0.25);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-success {
+            background: #16a34a;
+            color: white;
+            padding: 10px 24px;
+            border: none;
+            border-radius: 40px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn-success:hover {
+            background: #15803d;
+            transform: translateY(-1px);
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 2px solid var(--border);
+            padding: 10px 22px;
+            border-radius: 40px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: #475569;
+        }
+
+        .btn-outline:hover {
+            background: var(--bg);
+            border-color: #cbd5e1;
+        }
+
+        .btn-danger {
+            background: var(--primary);
+            color: white;
+            padding: 6px 18px;
+            border: none;
+            border-radius: 40px;
+            font-weight: 600;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-danger:hover {
+            background: var(--primary-dark);
+        }
+
+        .btn-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 4px;
+        }
+
+        /* ========== TABLES WITH SCROLL AND FILTERS ========== */
+        .table-container {
+            max-height: 400px;
+            overflow-y: auto;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+        }
+
+        .table-container::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        .table-container::-webkit-scrollbar-track {
+            background: var(--bg);
+            border-radius: 10px;
+        }
+
+        .table-container::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 10px;
+        }
+
+        .table-container::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+        .table-wrap {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+
+        table th {
+            text-align: left;
+            padding: 10px 12px 10px 0;
+            font-weight: 600;
+            color: #475569;
+            border-bottom: 2px solid var(--border);
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            position: sticky;
+            top: 0;
+            background: white;
+            z-index: 10;
+        }
+
+        table td {
+            padding: 10px 12px 10px 0;
+            border-bottom: 1px solid var(--border);
+            color: var(--text);
+        }
+
+        table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .filter-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            padding: 12px 0;
+            background: #f8fafc;
+            border-radius: 10px;
+            margin-bottom: 10px;
+            align-items: center;
+        }
+
+        .filter-row .filter-group {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .filter-row .filter-group label {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            white-space: nowrap;
+        }
+
+        .filter-row .filter-group input,
+        .filter-row .filter-group select {
+            padding: 6px 10px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 0.8rem;
+            background: white;
+            min-width: 100px;
+        }
+
+        .filter-row .filter-group input:focus,
+        .filter-row .filter-group select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.1);
+        }
+
+        .filter-row .clear-filters {
+            padding: 6px 14px;
+            border: none;
+            background: var(--primary-light);
+            color: var(--primary);
+            border-radius: 8px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .filter-row .clear-filters:hover {
+            background: #fecaca;
+        }
+
+        /* ========== BADGES ========== */
+        .status-badge {
+            display: inline-block;
+            padding: 3px 12px;
+            border-radius: 30px;
+            font-size: 0.7rem;
+            font-weight: 600;
+        }
+
+        .status-badge.pending {
+            background: #fef3c7;
+            color: #b45309;
+        }
+
+        .status-badge.matched {
+            background: #dbeafe;
+            color: #1d4ed8;
+        }
+
+        .status-badge.fulfilled {
+            background: #dcfce7;
+            color: #15803d;
+        }
+
+        .status-badge.critical {
+            background: #fef2f2;
+            color: #dc2626;
+        }
+
+        /* ========== AUTH ========== */
+        .auth-section {
+            background: #f8fafc;
+            padding: 24px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            border: 1px solid var(--border);
+        }
+
+        .auth-section .auth-toggle {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+
+        .auth-section .auth-toggle button {
+            padding: 6px 18px;
+            border-radius: 30px;
+            border: 2px solid var(--border);
+            background: white;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.85rem;
+            transition: all 0.2s;
+        }
+
+        .auth-section .auth-toggle button.active {
+            border-color: var(--primary);
+            background: var(--primary-light);
+            color: var(--primary);
+        }
+
+        .auth-section .auth-toggle button:hover {
+            border-color: var(--primary);
+        }
+
+        .auth-form {
+            display: none;
+        }
+
+        .auth-form.active {
+            display: block;
+        }
+
+        .auth-form .btn-primary {
+            width: 100%;
+            justify-content: center;
+        }
+
+        .login-status {
+            display: none;
+            padding: 10px 16px;
+            border-radius: 10px;
+            background: #f0fdf4;
+            color: #15803d;
+            border: 1px solid #bbf7d0;
+            margin-bottom: 16px;
+            font-weight: 500;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .login-status.show {
+            display: flex;
+        }
+
+        .login-status .btn-danger {
+            margin-left: auto;
+        }
+
+        .auth-required {
+            display: none;
+        }
+
+        .auth-required.show {
+            display: block;
+        }
+
+        .role-dashboard {
+            display: none;
+            animation: fadeUp 0.3s ease;
+        }
+
+        .role-dashboard.active {
+            display: block;
+        }
+
+        /* ========== TOAST ========== */
+        .toast {
+            padding: 14px 20px;
+            border-radius: 12px;
+            font-weight: 500;
+            margin-top: 12px;
+            display: none;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .toast.show {
+            display: flex;
+        }
+
+        .toast.success {
+            background: #f0fdf4;
+            color: #15803d;
+            border: 1px solid #bbf7d0;
+        }
+
+        .toast.error {
+            background: #fef2f2;
+            color: #dc2626;
+            border: 1px solid #fecaca;
+        }
+
+        .toast.info {
+            background: #eff6ff;
+            color: #1d4ed8;
+            border: 1px solid #bfdbfe;
+        }
+
+        .toast i {
+            font-size: 1.1rem;
+        }
+
+        /* ========== MAP ========== */
+        #donorMap {
+            height: 320px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            margin-top: 10px;
+            background: #e8edf4;
+        }
+
+        /* ========== LOCATION STATUS ========== */
+        #donorLocationStatus {
+            background: #f1f5f9;
+            padding: 10px 14px;
+            border-radius: 10px;
+            font-size: 0.9rem;
+            color: #475569;
+        }
+
+        /* ========== RESPONSIVE ========== */
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+                width: 280px;
+            }
+
+            .sidebar.open {
+                transform: translateX(0);
+            }
+
+            .main-content {
+                margin-left: 0;
+                padding: 16px;
+            }
+
+            .mobile-toggle {
+                display: flex !important;
+            }
+
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .landing-hero {
+                padding: 28px 20px;
+            }
+
+            .landing-hero h1 {
+                font-size: 1.8rem;
+            }
+
+            .stats-row {
+                grid-template-columns: 1fr 1fr;
+            }
+
+            .about-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .role-selector-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .panel {
+                padding: 16px;
+            }
+
+            .top-header h2 {
+                font-size: 1.1rem;
+            }
+
+            .hero-stats-mini {
+                gap: 16px;
+            }
+
+            .filter-row {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .filter-row .filter-group {
+                flex-wrap: wrap;
+            }
+
+            .filter-row .filter-group input,
+            .filter-row .filter-group select {
+                min-width: 80px;
+                flex: 1;
+            }
+
+            .user-display .user-name {
+                max-width: 80px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .stats-row {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* ========== SCROLLBAR ========== */
+        .sidebar::-webkit-scrollbar {
+            width: 4px;
+        }
+        .sidebar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .sidebar::-webkit-scrollbar-thumb {
+            background: #475569;
+            border-radius: 10px;
+        }
+
+        /* ========== UTILITY ========== */
+        .text-muted {
+            color: var(--text-muted);
+        }
+
+        .mt-1 {
+            margin-top: 8px;
+        }
+
+        .mb-1 {
+            margin-bottom: 8px;
+        }
+
+        .text-center {
+            text-align: center;
+        }
+
+        .w-full {
+            width: 100%;
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            from {
+                transform: rotate(0deg);
+            }
+            to {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ============================================================
+    SIDEBAR
+    ============================================================ -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-brand">
+            <i class="fas fa-droplet"></i>
+            <div>
+                <h1>The Blood Commons</h1>
+                <span>Pakistan · Every Drop, Connected.</span>
+            </div>
+        </div>
+
+        <div class="sidebar-label">Main Menu</div>
+        <button class="nav-item active" data-page="landing" id="navLanding">
+            <i class="fas fa-home"></i> Home
+        </button>
+
+        <div class="sidebar-label" style="margin-top: 16px;">Role Selector</div>
+        <button class="nav-item" data-page="donor" id="navDonor">
+            <i class="fas fa-hand-holding-heart"></i> Donor
+            <span class="badge">18%</span>
+        </button>
+        <button class="nav-item" data-page="hospital" id="navHospital">
+            <i class="fas fa-hospital"></i> Hospital
+            <span class="badge">1K+</span>
+        </button>
+        <button class="nav-item" data-page="bank" id="navBank">
+            <i class="fas fa-warehouse"></i> Blood Bank Admin
+            <span class="badge">1K+</span>
+        </button>
+
+        <div class="sidebar-footer">
+            <i class="fas fa-heart"></i> Open Source · v4.0
+        </div>
+    </aside>
+
+    <!-- ============================================================
+    MAIN CONTENT
+    ============================================================ -->
+    <main class="main-content" id="mainContent">
+
+        <!-- TOP HEADER -->
+        <div class="top-header">
+            <div>
+                <button class="mobile-toggle" id="mobileToggle" aria-label="Toggle menu">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <h2>
+                    <i class="fas fa-droplet"></i>
+                    <span id="pageTitle">The Blood Commons</span>
+                    <span class="subtitle"> — <span id="pageSubtitle">Pakistan</span></span>
+                </h2>
+            </div>
+            <div class="header-actions">
+                <div class="user-display" id="userDisplay">
+                    <div class="avatar" id="userAvatar">A</div>
+                    <div>
+                        <div class="user-name" id="userDisplayName">User</div>
+                        <div class="user-role" id="userDisplayRole">Donor</div>
+                    </div>
+                </div>
+                <button class="btn-icon"><i class="fas fa-bell"></i> Alerts</button>
+                <button class="btn-icon" id="globalLogoutBtn" style="display:none;"><i class="fas fa-sign-out-alt"></i> Logout</button>
+            </div>
+        </div>
+
+        <!-- ============================================================
+        PAGE: LANDING
+        ============================================================ -->
+        <div class="page-section active" id="pageLanding">
+            <div class="landing-hero">
+                <div class="hero-content">
+                    <div class="hero-badge"><i class="fas fa-heart"></i> Saving Lives, One Drop at a Time</div>
+                    <h1>Every Drop, <span>Connected.</span></h1>
+                    <p>
+                        Pakistan faces a <strong>2.3 million unit</strong> annual blood deficit.
+                        Only <strong>18%</strong> of donations are voluntary. We're building a
+                        connected ecosystem to ensure <strong>zero patients die</strong> because
+                        blood couldn't be found in time.
+                    </p>
+                    <div class="hero-stats-mini">
+                        <div class="stat-item">
+                            <span class="number">5M</span>
+                            <span class="label">Units Needed / Year</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="number">2.7M</span>
+                            <span class="label">Units Collected</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="number">100K+</span>
+                            <span class="label">Thalassemia Patients</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="stats-row">
+                <div class="stat-card">
+                    <div class="stat-icon"><i class="fas fa-tint"></i></div>
+                    <div class="stat-number">2.3M</div>
+                    <div class="stat-label">Annual Deficit</div>
+                    <span class="stat-change danger">▼ 46% shortfall</span>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon"><i class="fas fa-users"></i></div>
+                    <div class="stat-number">18%</div>
+                    <div class="stat-label">Voluntary Donors</div>
+                    <span class="stat-change danger">▼ 82% family</span>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon"><i class="fas fa-hospital-user"></i></div>
+                    <div class="stat-number">100K+</div>
+                    <div class="stat-label">Thalassemia Patients</div>
+                    <span class="stat-change success">🩸 lifelong need</span>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon"><i class="fas fa-clock"></i></div>
+                    <div class="stat-number">3.2h</div>
+                    <div class="stat-label">Avg. Match Time</div>
+                    <span class="stat-change success">▲ 88% faster</span>
+                </div>
+            </div>
+
+            <h3 style="font-size:1.1rem; margin-bottom:14px;">
+                <i class="fas fa-info-circle" style="color:var(--primary);"></i> Why The Blood Commons?
+            </h3>
+            <div class="about-grid">
+                <div class="about-card">
+                    <div class="icon-circle"><i class="fas fa-link"></i></div>
+                    <h3>Connected Ecosystem</h3>
+                    <p>Real-time connection between donors, hospitals, and blood banks — replacing fragmented phone calls and spreadsheets.</p>
+                </div>
+                <div class="about-card">
+                    <div class="icon-circle"><i class="fas fa-bullseye"></i></div>
+                    <h3>Intelligent Matching</h3>
+                    <p>Matches donors by blood type, geographic proximity, and clinical urgency — getting blood where it's needed, faster.</p>
+                </div>
+                <div class="about-card">
+                    <div class="icon-circle"><i class="fas fa-shield-alt"></i></div>
+                    <h3>Safety & Transparency</h3>
+                    <p>Verifiable tracking from donation to transfusion ensures quality, prevents fraud, and builds trust.</p>
+                </div>
+                <div class="about-card">
+                    <div class="icon-circle"><i class="fas fa-heart"></i></div>
+                    <h3>Retention & Impact</h3>
+                    <p>Gamification and impact metrics keep donors engaged. Our pilot achieved 73% retention.</p>
+                </div>
+            </div>
+
+            <h3 style="font-size:1.1rem; margin-bottom:14px;">
+                <i class="fas fa-users-cog" style="color:var(--primary);"></i> Select Your Role
+            </h3>
+            <p class="text-muted" style="margin-bottom:16px;">
+                Choose the role that best describes you. Each dashboard is tailored to your needs.
+            </p>
+            <div class="role-selector-grid">
+                <div class="role-card" data-role="donor">
+                    <span class="role-icon"><i class="fas fa-hand-holding-heart"></i></span>
+                    <h4>🩸 Donor</h4>
+                    <p>Register, set your availability, and get matched with patients who need your blood type.</p>
+                    <span class="role-badge highlight">18% voluntary</span>
+                </div>
+                <div class="role-card" data-role="hospital">
+                    <span class="role-icon"><i class="fas fa-hospital"></i></span>
+                    <h4>🏥 Hospital</h4>
+                    <p>Check local inventory, raise blood requests, and track matches in real-time.</p>
+                    <span class="role-badge">1,000+ hospitals</span>
+                </div>
+                <div class="role-card" data-role="bank">
+                    <span class="role-icon"><i class="fas fa-warehouse"></i></span>
+                    <h4>🏢 Blood Bank Admin</h4>
+                    <p>Manage inventory, fulfill requests, and ensure safe blood reaches patients.</p>
+                    <span class="role-badge">1,000+ banks</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============================================================
+        PAGE: DONOR
+        ============================================================ -->
+        <div class="page-section" id="pageDonor">
+            <div class="role-dashboard active">
+
+                <!-- AUTH SECTION -->
+                <div class="auth-section" id="donorAuthSection">
+                    <div class="auth-toggle">
+                        <button class="active" id="donorSignUpTab">📝 Sign Up</button>
+                        <button id="donorSignInTab">🔑 Sign In</button>
+                    </div>
+
+                    <!-- Sign Up Form -->
+                    <div class="auth-form active" id="donorSignUpForm">
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label>Full Name <span class="required">*</span></label>
+                                <input type="text" id="donorName" placeholder="e.g. Ahmed Khan" />
+                            </div>
+                            <div class="form-group">
+                                <label>Email <span class="required">*</span></label>
+                                <input type="email" id="donorEmail" placeholder="ahmed@email.com" />
+                            </div>
+                            <div class="form-group">
+                                <label>CNIC <span class="required">*</span></label>
+                                <input type="text" id="donorCnic" placeholder="XXXXX-XXXXXXX-X" />
+                            </div>
+                            <div class="form-group">
+                                <label>Blood Type <span class="required">*</span></label>
+                                <select id="donorBloodTypeSignup">
+                                    <option value="">— Select —</option>
+                                    <option value="A+">A+</option>
+                                    <option value="A-">A-</option>
+                                    <option value="B+">B+</option>
+                                    <option value="B-">B-</option>
+                                    <option value="AB+">AB+</option>
+                                    <option value="AB-">AB-</option>
+                                    <option value="O+">O+</option>
+                                    <option value="O-">O-</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>City <span class="required">*</span></label>
+                                <input type="text" id="donorCitySignup" placeholder="e.g. Lahore" />
+                            </div>
+                            <div class="form-group">
+                                <label>Phone <span class="required">*</span></label>
+                                <input type="tel" id="donorPhoneSignup" placeholder="03XX-XXXXXXX" />
+                            </div>
+                            <div class="form-group">
+                                <label>Password <span class="required">*</span></label>
+                                <input type="password" id="donorPasswordSignup" placeholder="Min 6 characters" />
+                            </div>
+                            <div class="form-group full-width">
+                                <label>📍 Your Location (Auto-detected)</label>
+                                <div id="donorLocationStatus">Detecting location...</div>
+                            </div>
+                        </div>
+                        <button class="btn-primary" id="donorSignUpBtn" style="width:100%; justify-content:center;">
+                            <i class="fas fa-user-plus"></i> Sign Up as Donor
+                        </button>
+                        <div id="donorSignUpToast" class="toast"></div>
+                    </div>
+
+                    <!-- Sign In Form — CNIC Login -->
+                    <div class="auth-form" id="donorSignInForm">
+                        <div class="form-group">
+                            <label>CNIC Number <span class="required">*</span></label>
+                            <input type="text" id="donorSignInCnic" placeholder="XXXXX-XXXXXXX-X" />
+                        </div>
+                        <div class="form-group">
+                            <label>Password <span class="required">*</span></label>
+                            <input type="password" id="donorSignInPassword" placeholder="Enter your password" />
+                        </div>
+                        <button class="btn-primary" id="donorSignInBtn" style="width:100%; justify-content:center;">
+                            <i class="fas fa-sign-in-alt"></i> Sign In with CNIC
+                        </button>
+                        <div id="donorSignInToast" class="toast"></div>
+                    </div>
+
+                    <div class="login-status" id="donorLoginStatus">
+                        <i class="fas fa-check-circle"></i>
+                        <span>Logged in as <strong id="donorLoggedName">Donor</strong></span>
+                        <button class="btn-danger" id="donorLogoutBtn">Logout</button>
+                    </div>
+                </div>
+
+                <!-- Donor Dashboard -->
+                <div class="auth-required" id="donorDashboardContent">
+                    <div class="panel">
+                        <div class="panel-header">
+                            <h3><i class="fas fa-hand-holding-heart"></i> Donor Dashboard</h3>
+                            <button class="panel-action" id="donorToggleAvailability">
+                                <i class="fas fa-toggle-on"></i> Available Now
+                            </button>
+                        </div>
+                        <p class="text-muted" style="margin-bottom:14px;">
+                            When you're available, hospitals near you can find you.
+                            <strong>Flipping the switch</strong> makes you searchable.
+                        </p>
+                        <div class="form-grid" style="margin-bottom:16px;">
+                            <div class="form-group">
+                                <label>Your Blood Type</label>
+                                <select id="donorBloodTypeProfile">
+                                    <option value="A+">A+</option>
+                                    <option value="A-">A-</option>
+                                    <option value="B+">B+</option>
+                                    <option value="B-">B-</option>
+                                    <option value="AB+">AB+</option>
+                                    <option value="AB-">AB-</option>
+                                    <option value="O+">O+</option>
+                                    <option value="O-">O-</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Your City</label>
+                                <input type="text" id="donorCityProfile" placeholder="e.g. Lahore" />
+                            </div>
+                            <div class="form-group full-width">
+                                <label>Phone Number</label>
+                                <input type="tel" id="donorPhoneProfile" placeholder="03XX-XXXXXXX" />
+                            </div>
+                        </div>
+                        <div class="btn-group">
+                            <button class="btn-primary" id="donorUpdateProfile"><i class="fas fa-save"></i> Update Profile</button>
+                            <button class="btn-outline" id="donorViewHistory"><i class="fas fa-history"></i> Donation History</button>
+                        </div>
+                        <div id="donorToast" class="toast"></div>
+                    </div>
+
+                    <!-- Map -->
+                    <div class="panel">
+                        <div class="panel-header">
+                            <h3><i class="fas fa-map-marked-alt"></i> Nearby Blood Banks</h3>
+                            <span class="text-muted" style="font-size:0.8rem;">Patient info is private</span>
+                        </div>
+                        <div id="donorMap"></div>
+                        <div class="text-muted mt-1" style="font-size:0.8rem;">
+                            <i class="fas fa-info-circle"></i> Red markers show blood banks near your location.
+                        </div>
+                    </div>
+
+                    <!-- Nearby Requests -->
+                    <div class="panel">
+                        <div class="panel-header">
+                            <h3><i class="fas fa-map-pin"></i> Nearby Blood Requests</h3>
+                            <span class="text-muted" style="font-size:0.8rem;">Patient info hidden</span>
+                        </div>
+                        <div class="table-wrap">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Blood Type Needed</th>
+                                        <th>Hospital</th>
+                                        <th>Urgency</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="donorRequestsTable">
+                                    <tr>
+                                        <td colspan="4" class="text-center text-muted" style="padding:20px;">
+                                            <i class="fas fa-spinner fa-spin"></i> Loading requests...
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============================================================
+        PAGE: HOSPITAL
+        ============================================================ -->
+        <div class="page-section" id="pageHospital">
+            <div class="role-dashboard active">
+
+                <!-- Hospital Login -->
+                <div class="auth-section" id="hospitalAuthSection">
+                    <h4 style="margin-bottom:12px;"><i class="fas fa-hospital"></i> Hospital Login</h4>
+                    <p class="text-muted" style="margin-bottom:14px; font-size:0.9rem;">
+                        Enter your hospital ID and password provided by The Blood Commons.
+                    </p>
+                    <div class="form-grid" style="max-width:450px;">
+                        <div class="form-group">
+                            <label>Hospital ID <span class="required">*</span></label>
+                            <input type="text" id="hospitalId" placeholder="e.g. HOSP-001" />
+                        </div>
+                        <div class="form-group">
+                            <label>Password <span class="required">*</span></label>
+                            <input type="password" id="hospitalPassword" placeholder="Enter your password" />
+                        </div>
+                    </div>
+                    <button class="btn-primary" id="hospitalLoginBtn"><i class="fas fa-sign-in-alt"></i> Login</button>
+                    <div id="hospitalLoginToast" class="toast"></div>
+
+                    <div class="login-status" id="hospitalLoginStatus">
+                        <i class="fas fa-check-circle"></i>
+                        <span>Logged in as <strong id="hospitalLoggedName">Hospital</strong></span>
+                        <button class="btn-danger" id="hospitalLogoutBtn">Logout</button>
+                    </div>
+                </div>
+
+                <!-- Hospital Dashboard -->
+                <div class="auth-required" id="hospitalDashboardContent">
+                    <div class="panel">
+                        <div class="panel-header">
+                            <h3><i class="fas fa-hospital"></i> Hospital Dashboard</h3>
+                            <button class="panel-action" id="hospitalNewRequestBtn">
+                                <i class="fas fa-plus-circle"></i> New Request
+                            </button>
+                        </div>
+
+                        <!-- Request Form -->
+                        <div id="hospitalRequestForm" style="display:none; margin-bottom:16px; padding:16px; background:#f8fafc; border-radius:12px;">
+                            <h4 style="margin-bottom:12px;"><i class="fas fa-file-medical"></i> Create Blood Request</h4>
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label>Patient Name <span class="required">*</span></label>
+                                    <input type="text" id="hPatientName" placeholder="e.g. Aisha" />
+                                </div>
+                                <div class="form-group">
+                                    <label>Blood Type <span class="required">*</span></label>
+                                    <select id="hBloodType">
+                                        <option value="A+">A+</option>
+                                        <option value="A-">A-</option>
+                                        <option value="B+">B+</option>
+                                        <option value="B-">B-</option>
+                                        <option value="AB+">AB+</option>
+                                        <option value="AB-">AB-</option>
+                                        <option value="O+">O+</option>
+                                        <option value="O-">O-</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>Units Needed <span class="required">*</span></label>
+                                    <input type="number" id="hUnits" value="2" min="1" max="20" />
+                                </div>
+                                <div class="form-group">
+                                    <label>Urgency <span class="required">*</span></label>
+                                    <select id="hUrgency">
+                                        <option value="routine">Routine</option>
+                                        <option value="urgent">Urgent</option>
+                                        <option value="critical">Critical</option>
+                                    </select>
+                                </div>
+                                <div class="form-group full-width">
+                                    <label>Hospital / Location</label>
+                                    <input type="text" id="hLocation" placeholder="Mayo Hospital, Lahore" />
+                                </div>
+                                <div class="form-group full-width">
+                                    <label>Contact Number</label>
+                                    <input type="tel" id="hContact" placeholder="03XX-XXXXXXX" />
+                                </div>
+                            </div>
+                            <div class="btn-group">
+                                <button class="btn-primary" id="hSubmitRequest"><i class="fas fa-paper-plane"></i> Submit Request</button>
+                                <button class="btn-outline" id="hCancelRequest">Cancel</button>
+                            </div>
+                            <div id="hospitalToast" class="toast"></div>
+                        </div>
+
+                        <!-- Inventory with Filter -->
+                        <div style="background:#f1f5f9; padding:12px 16px; border-radius:10px; margin-bottom:16px; display:flex; flex-wrap:wrap; gap:10px; align-items:center; justify-content:space-between;">
+                            <span><i class="fas fa-warehouse" style="color:var(--primary);"></i> <strong>Local Inventory</strong></span>
+                            <button class="btn-outline" style="padding:4px 16px; font-size:0.8rem;" id="hRefreshInventory"><i class="fas fa-sync-alt"></i> Refresh</button>
+                        </div>
+
+                        <!-- Filter Row -->
+                        <div class="filter-row" id="inventoryFilters">
+                            <div class="filter-group">
+                                <label>Blood Bank:</label>
+                                <input type="text" id="filterBank" placeholder="Filter bank..." />
+                            </div>
+                            <div class="filter-group">
+                                <label>Blood Type:</label>
+                                <select id="filterBloodType">
+                                    <option value="">All</option>
+                                    <option value="A+">A+</option>
+                                    <option value="A-">A-</option>
+                                    <option value="B+">B+</option>
+                                    <option value="B-">B-</option>
+                                    <option value="AB+">AB+</option>
+                                    <option value="AB-">AB-</option>
+                                    <option value="O+">O+</option>
+                                    <option value="O-">O-</option>
+                                </select>
+                            </div>
+                            <div class="filter-group">
+                                <label>Status:</label>
+                                <select id="filterStockStatus">
+                                    <option value="">All</option>
+                                    <option value="In Stock">In Stock</option>
+                                    <option value="Low Stock">Low Stock</option>
+                                    <option value="Out of Stock">Out of Stock</option>
+                                </select>
+                            </div>
+                            <button class="clear-filters" id="clearInventoryFilters">Clear Filters</button>
+                        </div>
+
+                        <div class="table-container">
+                            <div class="table-wrap">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Blood Bank</th>
+                                            <th>Blood Type</th>
+                                            <th>Units</th>
+                                            <th>Distance</th>
+                                            <th>Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="inventoryTableBody">
+                                        <tr>
+                                            <td colspan="5" class="text-center text-muted" style="padding:20px;">
+                                                <i class="fas fa-spinner fa-spin"></i> Loading inventory...
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Active Requests with Match Details -->
+                    <div class="panel">
+                        <div class="panel-header">
+                            <h3><i class="fas fa-list"></i> Your Active Requests</h3>
+                            <span class="text-muted" style="font-size:0.8rem;" id="requestCount">0 pending</span>
+                        </div>
+
+                        <!-- Filter Row -->
+                        <div class="filter-row" id="hospitalRequestFilters">
+                            <div class="filter-group">
+                                <label>Patient:</label>
+                                <input type="text" id="filterPatient" placeholder="Filter patient..." />
+                            </div>
+                            <div class="filter-group">
+                                <label>Blood Type:</label>
+                                <select id="filterReqBloodType">
+                                    <option value="">All</option>
+                                    <option value="A+">A+</option>
+                                    <option value="A-">A-</option>
+                                    <option value="B+">B+</option>
+                                    <option value="B-">B-</option>
+                                    <option value="AB+">AB+</option>
+                                    <option value="AB-">AB-</option>
+                                    <option value="O+">O+</option>
+                                    <option value="O-">O-</option>
+                                </select>
+                            </div>
+                            <div class="filter-group">
+                                <label>Urgency:</label>
+                                <select id="filterUrgency">
+                                    <option value="">All</option>
+                                    <option value="routine">Routine</option>
+                                    <option value="urgent">Urgent</option>
+                                    <option value="critical">Critical</option>
+                                </select>
+                            </div>
+                            <div class="filter-group">
+                                <label>Status:</label>
+                                <select id="filterReqStatus">
+                                    <option value="">All</option>
+                                    <option value="pending">Pending</option>
+                                    <option value="matched">Matched</option>
+                                    <option value="fulfilled">Fulfilled</option>
+                                    <option value="cancelled">Cancelled</option>
+                                </select>
+                            </div>
+                            <button class="clear-filters" id="clearHospitalFilters">Clear Filters</button>
+                        </div>
+
+                        <div class="table-container">
+                            <div class="table-wrap">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Patient</th>
+                                            <th>Blood Type</th>
+                                            <th>Units</th>
+                                            <th>Urgency</th>
+                                            <th>Status</th>
+                                            <th>Match Details</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="hospitalRequestsTable">
+                                        <tr>
+                                            <td colspan="6" class="text-center text-muted" style="padding:20px;">
+                                                <i class="fas fa-spinner fa-spin"></i> Loading requests...
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============================================================
+        PAGE: BLOOD BANK ADMIN
+        ============================================================ -->
+        <div class="page-section" id="pageBank">
+            <div class="role-dashboard active">
+
+                <!-- Bank Login -->
+                <div class="auth-section" id="bankAuthSection">
+                    <h4 style="margin-bottom:12px;"><i class="fas fa-warehouse"></i> Blood Bank Admin Login</h4>
+                    <p class="text-muted" style="margin-bottom:14px; font-size:0.9rem;">
+                        Enter your Blood Bank ID and password provided by The Blood Commons.
+                    </p>
+                    <div class="form-grid" style="max-width:450px;">
+                        <div class="form-group">
+                            <label>Bank ID <span class="required">*</span></label>
+                            <input type="text" id="bankId" placeholder="e.g. BANK-001" />
+                        </div>
+                        <div class="form-group">
+                            <label>Password <span class="required">*</span></label>
+                            <input type="password" id="bankPassword" placeholder="Enter your password" />
+                        </div>
+                    </div>
+                    <button class="btn-primary" id="bankLoginBtn"><i class="fas fa-sign-in-alt"></i> Login</button>
+                    <div id="bankLoginToast" class="toast"></div>
+
+                    <div class="login-status" id="bankLoginStatus">
+                        <i class="fas fa-check-circle"></i>
+                        <span>Logged in as <strong id="bankLoggedName">Blood Bank</strong></span>
+                        <button class="btn-danger" id="bankLogoutBtn">Logout</button>
+                    </div>
+                </div>
+
+                <!-- Bank Dashboard -->
+                <div class="auth-required" id="bankDashboardContent">
+                    <div class="panel">
+                        <div class="panel-header">
+                            <h3><i class="fas fa-warehouse"></i> Blood Bank Admin</h3>
+                            <button class="panel-action" id="bankAddInventoryBtn">
+                                <i class="fas fa-plus-circle"></i> Update Stock
+                            </button>
+                        </div>
+
+                        <!-- Stock Form -->
+                        <div id="bankStockForm" style="display:none; margin-bottom:16px; padding:16px; background:#f8fafc; border-radius:12px;">
+                            <h4 style="margin-bottom:12px;"><i class="fas fa-boxes"></i> Update Inventory</h4>
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label>Blood Type</label>
+                                    <select id="bankBloodType">
+                                        <option value="A+">A+</option>
+                                        <option value="A-">A-</option>
+                                        <option value="B+">B+</option>
+                                        <option value="B-">B-</option>
+                                        <option value="AB+">AB+</option>
+                                        <option value="AB-">AB-</option>
+                                        <option value="O+">O+</option>
+                                        <option value="O-">O-</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>Units Available</label>
+                                    <input type="number" id="bankUnits" value="10" min="0" max="500" />
+                                </div>
+                                <div class="form-group full-width">
+                                    <label>Expiry Date</label>
+                                    <input type="date" id="bankExpiry" />
+                                </div>
+                            </div>
+                            <div class="btn-group">
+                                <button class="btn-primary" id="bankSaveStock"><i class="fas fa-save"></i> Save Stock</button>
+                                <button class="btn-outline" id="bankCancelStock">Cancel</button>
+                            </div>
+                            <div id="bankToast" class="toast"></div>
+                        </div>
+
+                        <!-- Inventory Table with Filter -->
+                        <div class="filter-row" id="bankInventoryFilters">
+                            <div class="filter-group">
+                                <label>Blood Type:</label>
+                                <select id="bankFilterBloodType">
+                                    <option value="">All</option>
+                                    <option value="A+">A+</option>
+                                    <option value="A-">A-</option>
+                                    <option value="B+">B+</option>
+                                    <option value="B-">B-</option>
+                                    <option value="AB+">AB+</option>
+                                    <option value="AB-">AB-</option>
+                                    <option value="O+">O+</option>
+                                    <option value="O-">O-</option>
+                                </select>
+                            </div>
+                            <div class="filter-group">
+                                <label>Status:</label>
+                                <select id="bankFilterStatus">
+                                    <option value="">All</option>
+                                    <option value="In Stock">In Stock</option>
+                                    <option value="Low Stock">Low Stock</option>
+                                    <option value="Out of Stock">Out of Stock</option>
+                                </select>
+                            </div>
+                            <button class="clear-filters" id="clearBankFilters">Clear Filters</button>
+                        </div>
+
+                        <div class="table-container">
+                            <div class="table-wrap">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Blood Type</th>
+                                            <th>Units</th>
+                                            <th>Expiry</th>
+                                            <th>Status</th>
+                                            <th>Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="bankInventoryTable">
+                                        <tr>
+                                            <td colspan="5" class="text-center text-muted" style="padding:20px;">
+                                                <i class="fas fa-spinner fa-spin"></i> Loading inventory...
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Incoming Requests with Filter -->
+                    <div class="panel">
+                        <div class="panel-header">
+                            <h3><i class="fas fa-inbox"></i> Incoming Requests</h3>
+                            <span class="text-muted" style="font-size:0.8rem;" id="bankRequestCount">0 awaiting action</span>
+                        </div>
+
+                        <div class="filter-row" id="bankRequestFilters">
+                            <div class="filter-group">
+                                <label>Hospital:</label>
+                                <input type="text" id="bankFilterHospital" placeholder="Filter hospital..." />
+                            </div>
+                            <div class="filter-group">
+                                <label>Blood Type:</label>
+                                <select id="bankFilterReqBloodType">
+                                    <option value="">All</option>
+                                    <option value="A+">A+</option>
+                                    <option value="A-">A-</option>
+                                    <option value="B+">B+</option>
+                                    <option value="B-">B-</option>
+                                    <option value="AB+">AB+</option>
+                                    <option value="AB-">AB-</option>
+                                    <option value="O+">O+</option>
+                                    <option value="O-">O-</option>
+                                </select>
+                            </div>
+                            <div class="filter-group">
+                                <label>Urgency:</label>
+                                <select id="bankFilterUrgency">
+                                    <option value="">All</option>
+                                    <option value="routine">Routine</option>
+                                    <option value="urgent">Urgent</option>
+                                    <option value="critical">Critical</option>
+                                </select>
+                            </div>
+                            <button class="clear-filters" id="clearBankRequestFilters">Clear Filters</button>
+                        </div>
+
+                        <div class="table-container">
+                            <div class="table-wrap">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Hospital</th>
+                                            <th>Blood Type</th>
+                                            <th>Units</th>
+                                            <th>Urgency</th>
+                                            <th>Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="bankRequestsTable">
+                                        <tr>
+                                            <td colspan="5" class="text-center text-muted" style="padding:20px;">
+                                                <i class="fas fa-spinner fa-spin"></i> Loading requests...
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- FOOTER -->
+        <div style="text-align:center; padding:20px 0 4px; color:#94a3b8; font-size:0.8rem; border-top:1px solid var(--border); margin-top:16px;">
+            <i class="fas fa-heart" style="color:var(--primary);"></i>
+            The Blood Commons · Pakistan · Open Source · Saving Lives
+        </div>
+
+    </main>
+
+    <!-- ============================================================
+    JAVASCRIPT — Load from separate file
+    ============================================================ -->
+    <script src="app.js"></script>
+
+</body>
+</html>
