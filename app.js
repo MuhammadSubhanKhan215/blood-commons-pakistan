@@ -1,7 +1,7 @@
 // ============================================================
 // THE BLOOD COMMONS — PAKISTAN
-// With Email Notifications (Resend)
-// Version 4.4
+// With Email Notifications (Resend) — FIXED SIGN-UP
+// Version 4.5
 // ============================================================
 
 (function() {
@@ -13,9 +13,9 @@
     const CONFIG = {
         SUPABASE_URL: 'https://ctsnlmsvgkbbcattzfjc.supabase.co',
         SUPABASE_ANON_KEY: 'sb_publishable_X0nyDu5GH0i3xT16wP7-Lg_XO7sr3nI',
-        RESEND_API_KEY: 're_d4Dra5Za_HLmGA9PzA8wbH3DXW2oeCeNi',  // ✅ NEW API KEY
+        RESEND_API_KEY: process.env.RESEND_API_KEY || 're_d4Dra5Za_HLmGA9PzA8wbH3DXW2oeCeNi',
         APP_NAME: 'The Blood Commons — Pakistan',
-        VERSION: '4.4'
+        VERSION: '4.5'
     };
 
     // ============================================================
@@ -484,9 +484,7 @@
                         matchCount++;
                         console.log('✅ Match created for:', match.source_type, match.source_name);
                         
-                        // ============================================================
                         // 📧 SEND EMAIL TO DONOR IF MATCHED
-                        // ============================================================
                         if (match.source_type === 'donor') {
                             const { data: donor } = await supabase
                                 .from('profiles')
@@ -620,7 +618,7 @@
     }
 
     // ============================================================
-    // DONOR FUNCTIONS
+    // DONOR FUNCTIONS — FIXED SIGN-UP
     // ============================================================
 
     async function handleDonorSignUp() {
@@ -648,26 +646,75 @@
         }
 
         try {
-            const { data: existing } = await supabase
+            // Check if CNIC already exists
+            const { data: existing, error: checkError } = await supabase
                 .from('profiles')
                 .select('cnic')
                 .eq('cnic', cnic)
                 .maybeSingle();
+
+            if (checkError) {
+                console.warn('CNIC check error:', checkError);
+            }
 
             if (existing) {
                 showToast(DOM.donorSignUpToast, 'error', `❌ CNIC ${cnic} already registered.`);
                 return;
             }
 
+            console.log('📝 Attempting to sign up:', email);
+
+            // Sign up with Supabase Auth
             const { data: authData, error: authError } = await supabase.auth.signUp({
                 email: email,
                 password: password,
-                options: { data: { full_name: name, user_type: 'donor', cnic: cnic } }
+                options: { 
+                    data: { 
+                        full_name: name, 
+                        user_type: 'donor', 
+                        cnic: cnic 
+                    }
+                }
             });
 
-            if (authError) throw authError;
+            if (authError) {
+                console.error('❌ Auth error:', authError);
+                
+                // Handle specific errors
+                if (authError.message.includes('User already registered')) {
+                    showToast(DOM.donorSignUpToast, 'error', 
+                        `❌ Email "${email}" is already registered. Please use a different email.`);
+                    return;
+                }
+                
+                if (authError.message.includes('rate limit')) {
+                    showToast(DOM.donorSignUpToast, 'error', 
+                        '⚠️ Too many attempts. Please wait 5-10 minutes.');
+                    return;
+                }
+                
+                if (authError.message.includes('email') || authError.message.includes('Email')) {
+                    showToast(DOM.donorSignUpToast, 'error', 
+                        `❌ Email error: ${authError.message}`);
+                    return;
+                }
+                
+                // Generic error
+                showToast(DOM.donorSignUpToast, 'error', 
+                    `❌ Sign-up failed: ${authError.message}`);
+                return;
+            }
 
-            await supabase
+            if (!authData.user) {
+                showToast(DOM.donorSignUpToast, 'error', 
+                    '⚠️ Sign-up failed. Please try again.');
+                return;
+            }
+
+            console.log('✅ Auth user created:', authData.user.id);
+
+            // Create profile
+            const { error: profileError } = await supabase
                 .from('profiles')
                 .insert({
                     id: authData.user.id,
@@ -682,33 +729,56 @@
                     is_available: true,
                 });
 
-            // 📧 SEND WELCOME EMAIL
-            if (email) {
-                const welcomeHtml = getWelcomeEmailTemplate(name);
-                await sendEmail(
-                    email,
-                    '🩸 Welcome to The Blood Commons!',
-                    welcomeHtml
-                );
-                console.log('📧 Welcome email sent to:', email);
+            if (profileError) {
+                console.error('❌ Profile error:', profileError);
+                showToast(DOM.donorSignUpToast, 'error', 
+                    `❌ Profile creation failed: ${profileError.message}`);
+                return;
             }
 
-            showToast(DOM.donorSignUpToast, 'success', `✅ Welcome, ${name}! Check your email.`);
+            console.log('✅ Profile created successfully');
 
+            // 📧 SEND WELCOME EMAIL
+            if (email) {
+                try {
+                    const welcomeHtml = getWelcomeEmailTemplate(name);
+                    await sendEmail(
+                        email,
+                        '🩸 Welcome to The Blood Commons!',
+                        welcomeHtml
+                    );
+                    console.log('📧 Welcome email sent to:', email);
+                } catch (emailError) {
+                    console.warn('⚠️ Email sending failed:', emailError);
+                }
+            }
+
+            showToast(DOM.donorSignUpToast, 'success', 
+                `✅ Welcome, ${name}! You can now login with your CNIC.`);
+
+            // Auto-login after signup
             const { data: session } = await supabase.auth.getSession();
             if (session.session) {
                 STATE.currentUser = session.session.user;
                 await loadDonorProfile();
                 showDonorDashboard();
+                showToast(DOM.donorSignUpToast, 'success', 
+                    `✅ Welcome, ${name}! Check your email.`);
+            } else {
+                showToast(DOM.donorSignUpToast, 'info', 
+                    '✅ Registration complete! Please sign in with your CNIC.');
+                DOM.donorSignInTab.click();
             }
 
         } catch (error) {
-            showToast(DOM.donorSignUpToast, 'error', error.message);
+            console.error('❌ Sign-up error:', error);
+            showToast(DOM.donorSignUpToast, 'error', 
+                `<i class="fas fa-exclamation-circle"></i> ${error.message}`);
         }
     }
 
     // ============================================================
-    // DONOR SIGN IN, LOAD PROFILE, DASHBOARD
+    // DONOR SIGN IN
     // ============================================================
 
     async function handleDonorSignIn() {
@@ -735,7 +805,13 @@
                 password: password,
             });
 
-            if (signInError) throw signInError;
+            if (signInError) {
+                if (signInError.message.includes('Invalid login credentials')) {
+                    showToast(DOM.donorSignInToast, 'error', '❌ Invalid CNIC or password.');
+                    return;
+                }
+                throw signInError;
+            }
 
             STATE.currentUser = data.user;
             STATE.currentUser.profile = {
@@ -752,6 +828,7 @@
             showToast(DOM.donorSignInToast, 'success', `✅ Welcome back, ${user.full_name}!`);
 
         } catch (error) {
+            console.error('❌ Sign-in error:', error);
             showToast(DOM.donorSignInToast, 'error', error.message);
         }
     }
@@ -792,15 +869,32 @@
     }
 
     function handleDonorLogout() {
-        supabase.auth.signOut();
+        if (supabase) {
+            supabase.auth.signOut();
+        }
         STATE.currentUser = null;
         STATE.currentRole = null;
         DOM.donorAuthSection.style.display = 'block';
         DOM.donorDashboardContent.classList.remove('show');
         DOM.donorLoginStatus.classList.remove('show');
         DOM.globalLogoutBtn.style.display = 'none';
-        DOM.donorSignUpForm.reset();
-        DOM.donorSignInForm.reset();
+        
+        // Fix: Check if form exists before resetting
+        if (DOM.donorSignUpForm) {
+            try {
+                DOM.donorSignUpForm.reset();
+            } catch (e) {
+                console.warn('Could not reset form:', e);
+            }
+        }
+        if (DOM.donorSignInForm) {
+            try {
+                DOM.donorSignInForm.reset();
+            } catch (e) {
+                console.warn('Could not reset form:', e);
+            }
+        }
+        
         DOM.donorSignUpTab.click();
         STATE.mapInitialized = false;
         updateUserDisplay(null);
