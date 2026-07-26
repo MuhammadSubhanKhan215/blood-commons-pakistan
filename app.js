@@ -257,7 +257,7 @@
     }
 
     // ============================================================
-    // ⭐⭐⭐ FIXED DONOR SIGN-UP (Vercel Compatible) ⭐⭐⭐
+    // ⭐⭐⭐ FINAL FIXED DONOR SIGN-UP ⭐⭐⭐
     // ============================================================
 
     async function handleDonorSignUp() {
@@ -289,7 +289,7 @@
         try {
             console.log('📝 Attempting sign-up for:', email);
 
-            // 🔍 STEP 1: Check if CNIC already exists in profiles
+            // 🔍 STEP 1: Check if CNIC already exists
             const { data: existingCnic, error: cnicError } = await supabase
                 .from('profiles')
                 .select('cnic')
@@ -321,64 +321,72 @@
                 return;
             }
 
-            // 🔍 STEP 3: Sign up with Supabase Auth - SIMPLIFIED for Vercel
+            // 🔍 STEP 3: SIGN UP - WITHOUT ANY METADATA (CRITICAL!)
+            console.log('🔄 Creating auth user...');
+            
             const { data: authData, error: authError } = await supabase.auth.signUp({
                 email: email,
-                password: password,
-                options: {
-                    // REMOVED emailRedirectTo - was causing 500 on Vercel
-                    data: {
-                        full_name: name,
-                        user_type: 'donor',
-                        cnic: cnic
-                    }
-                }
+                password: password
+                // ⭐ NO options.data - this was causing the 500 error!
             });
 
             if (authError) {
                 console.error('❌ Auth Error:', authError);
                 
-                // Handle specific errors
                 if (authError.message.includes('User already registered')) {
-                    showToast(DOM.donorSignUpToast, 'error', `❌ Email "${email}" is already registered. Please sign in.`);
-                    // Switch to sign-in tab
+                    showToast(DOM.donorSignUpToast, 'error', `❌ Email "${email}" is already registered.`);
                     DOM.donorSignInTab.click();
                     DOM.donorSignInCnic.value = cnic;
                     return;
                 }
                 
-                if (authError.message.includes('rate limit')) {
-                    showToast(DOM.donorSignUpToast, 'error', '⚠️ Too many attempts. Please wait 5-10 minutes.');
-                    return;
-                }
-                
-                // Any other error
                 showToast(DOM.donorSignUpToast, 'error', `❌ ${authError.message}`);
                 return;
             }
 
             if (!authData.user) {
-                showToast(DOM.donorSignUpToast, 'error', '⚠️ Sign-up failed. Please try again.');
+                showToast(DOM.donorSignUpToast, 'error', '⚠️ Sign-up failed.');
                 return;
             }
 
             console.log('✅ Auth user created:', authData.user.id);
 
-            // ⭐ STEP 4: Wait a moment for the session to stabilize
+            // ⭐ STEP 4: Wait for auth to fully process
             await new Promise(resolve => setTimeout(resolve, 1500));
 
-            // 🔍 STEP 5: Create profile in profiles table
+            // ⭐ STEP 5: Update user metadata in a SEPARATE call
+            try {
+                console.log('🔄 Updating user metadata...');
+                const { error: updateError } = await supabase.auth.updateUser({
+                    data: {
+                        full_name: name,
+                        user_type: 'donor',
+                        cnic: cnic
+                    }
+                });
+                if (updateError) {
+                    console.warn('⚠️ Metadata update warning:', updateError);
+                } else {
+                    console.log('✅ Metadata updated');
+                }
+            } catch (e) {
+                console.warn('⚠️ Metadata update failed:', e);
+            }
+
+            // ⭐ STEP 6: Create profile manually
+            console.log('🔄 Creating profile...');
+            
             const { error: profileError } = await supabase
                 .from('profiles')
                 .insert({
                     id: authData.user.id,
+                    email: email,
                     full_name: name,
                     user_type: 'donor',
                     phone: phone,
                     cnic: cnic,
                     city: city,
                     blood_type: bloodType,
-                    email: email, // Added email to profiles for sign-in
                     latitude: STATE.userLocation.lat || 31.5204,
                     longitude: STATE.userLocation.lng || 74.3587,
                     is_available: true,
@@ -392,36 +400,22 @@
 
             console.log('✅ Profile created successfully');
 
-            // 📧 STEP 6: Try to send welcome email (don't block on failure)
-            if (email) {
-                try {
-                    const welcomeHtml = getWelcomeEmailTemplate(name);
-                    await sendEmail(email, '🩸 Welcome to The Blood Commons!', welcomeHtml);
-                    console.log('📧 Welcome email sent to:', email);
-                } catch (emailError) {
-                    console.warn('⚠️ Email sending failed:', emailError);
-                }
-            }
-
-            showToast(DOM.donorSignUpToast, 'success', `✅ Welcome, ${name}! You can now sign in.`);
-
-            // 🔍 STEP 7: Try to auto-login
+            // ⭐ STEP 7: Try to auto-login
             const { data: sessionData } = await supabase.auth.getSession();
             if (sessionData.session) {
                 STATE.currentUser = sessionData.session.user;
                 await loadDonorProfile();
                 showDonorDashboard();
-                showToast(DOM.donorSignUpToast, 'success', `✅ Welcome, ${name}! You are now logged in.`);
+                showToast(DOM.donorSignUpToast, 'success', `✅ Welcome, ${name}!`);
             } else {
-                // Switch to sign-in tab
                 DOM.donorSignInTab.click();
                 DOM.donorSignInCnic.value = cnic;
-                showToast(DOM.donorSignUpToast, 'info', '✅ Registration complete! Please sign in with your CNIC.');
+                showToast(DOM.donorSignUpToast, 'info', '✅ Registration complete! Please sign in.');
             }
 
         } catch (error) {
-            console.error('❌ Unexpected sign-up error:', error);
-            showToast(DOM.donorSignUpToast, 'error', `❌ ${error.message || 'Sign-up failed. Please try again.'}`);
+            console.error('❌ Unexpected error:', error);
+            showToast(DOM.donorSignUpToast, 'error', `❌ ${error.message || 'Sign-up failed.'}`);
         }
     }
 
@@ -448,6 +442,12 @@
 
             if (profileError || !profileData) {
                 showToast(DOM.donorSignInToast, 'error', '❌ No account found with this CNIC.');
+                return;
+            }
+
+            // Check if profile has an email
+            if (!profileData.email) {
+                showToast(DOM.donorSignInToast, 'error', '❌ Account found but email is missing. Please contact support.');
                 return;
             }
 
