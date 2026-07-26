@@ -1,7 +1,7 @@
 // ============================================================
 // THE BLOOD COMMONS — PAKISTAN
-// Full Version with Matching Engine + Match Details + Inventory Management
-// Version 4.2
+// With Email Notifications (Resend)
+// Version 4.4
 // ============================================================
 
 (function() {
@@ -13,8 +13,9 @@
     const CONFIG = {
         SUPABASE_URL: 'https://ctsnlmsvgkbbcattzfjc.supabase.co',
         SUPABASE_ANON_KEY: 'sb_publishable_X0nyDu5GH0i3xT16wP7-Lg_XO7sr3nI',
+        RESEND_API_KEY: 're_d4Dra5Za_HLmGA9PzA8wbH3DXW2oeCeNi',  // ✅ NEW API KEY
         APP_NAME: 'The Blood Commons — Pakistan',
-        VERSION: '4.2'
+        VERSION: '4.4'
     };
 
     // ============================================================
@@ -47,6 +48,7 @@
             );
             STATE.isSupabaseReady = true;
             console.log('✅ Supabase client initialized');
+            console.log('📧 Resend API Key configured');
         }
     } catch (e) {
         console.warn('⚠️ Supabase initialization failed:', e.message);
@@ -251,6 +253,171 @@
     }
 
     // ============================================================
+    // ⭐⭐⭐ EMAIL NOTIFICATIONS ⭐⭐⭐
+    // ============================================================
+
+    // Send email function
+    async function sendEmail(to, subject, html) {
+        if (!CONFIG.RESEND_API_KEY) {
+            console.log('📧 Email not sent: No API key configured');
+            return null;
+        }
+
+        try {
+            const response = await fetch('https://api.resend.com/emails', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${CONFIG.RESEND_API_KEY}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    from: 'The Blood Commons <noreply@bloodcommons.com>',
+                    to: to,
+                    subject: subject,
+                    html: html
+                })
+            });
+            const data = await response.json();
+            console.log('📧 Email sent:', data);
+            return data;
+        } catch (error) {
+            console.error('📧 Email error:', error);
+            return null;
+        }
+    }
+
+    // Welcome Email Template
+    function getWelcomeEmailTemplate(name) {
+        return `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>Welcome to The Blood Commons</title>
+            </head>
+            <body style="margin:0;padding:0;font-family:'Segoe UI',Arial,sans-serif;background:#f1f5f9;">
+                <table width="100%" cellpadding="0" cellspacing="0" style="background:#f1f5f9;padding:20px 0;">
+                    <tr>
+                        <td align="center">
+                            <table width="100%" max-width="600" cellpadding="0" cellspacing="0" style="max-width:600px;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,0.06);">
+                                <tr>
+                                    <td style="background:#dc2626;padding:30px 40px;text-align:center;">
+                                        <h1 style="color:#ffffff;font-size:24px;margin:0;font-weight:700;">🩸 Welcome to The Blood Commons</h1>
+                                        <p style="color:#fca5a5;margin:8px 0 0;font-size:14px;">Pakistan · Every Drop, Connected.</p>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="padding:32px 40px;">
+                                        <h2 style="color:#0f172a;font-size:20px;margin:0 0 8px;">Hello ${name},</h2>
+                                        <p style="color:#475569;font-size:15px;line-height:1.6;margin:0 0 20px;">
+                                            Thank you for registering as a donor on <strong>The Blood Commons</strong>! 🎉
+                                        </p>
+                                        <p style="color:#475569;font-size:15px;line-height:1.6;margin:0 0 20px;">
+                                            You are now part of a life-saving community that connects donors with patients in need.
+                                        </p>
+                                        <div style="background:#f8fafc;padding:16px 20px;border-radius:12px;margin-bottom:20px;">
+                                            <p style="margin:4px 0;font-size:14px;color:#0f172a;">
+                                                <strong>📝 What's next?</strong>
+                                            </p>
+                                            <p style="margin:4px 0;font-size:14px;color:#475569;">
+                                                1️⃣ Make sure your <strong>📱 phone number</strong> is correct
+                                            </p>
+                                            <p style="margin:4px 0;font-size:14px;color:#475569;">
+                                                2️⃣ Toggle <strong>"Available Now"</strong> when you can donate
+                                            </p>
+                                            <p style="margin:4px 0;font-size:14px;color:#475569;">
+                                                3️⃣ When matched, you'll get a notification here and via SMS
+                                            </p>
+                                        </div>
+                                        <div style="text-align:center;margin:24px 0;">
+                                            <a href="${window.location.origin}" style="display:inline-block;background:#dc2626;color:#ffffff;padding:12px 32px;border-radius:40px;text-decoration:none;font-weight:600;font-size:15px;">
+                                                Go to Dashboard
+                                            </a>
+                                        </div>
+                                        <p style="color:#94a3b8;font-size:13px;text-align:center;margin:16px 0 0;border-top:1px solid #e2e8f0;padding-top:16px;">
+                                            ❤️ Every donation can save up to 3 lives. You are a hero!
+                                            <br>
+                                            <small>The Blood Commons · Pakistan</small>
+                                        </p>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                </table>
+            </body>
+            </html>
+        `;
+    }
+
+    // Match Alert Email Template
+    function getMatchEmailTemplate(donorName, request, match) {
+        return `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>🩸 Blood Match Alert</title>
+            </head>
+            <body style="margin:0;padding:0;font-family:'Segoe UI',Arial,sans-serif;background:#f1f5f9;">
+                <table width="100%" cellpadding="0" cellspacing="0" style="background:#f1f5f9;padding:20px 0;">
+                    <tr>
+                        <td align="center">
+                            <table width="100%" max-width="600" cellpadding="0" cellspacing="0" style="max-width:600px;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,0.06);">
+                                <tr>
+                                    <td style="background:#dc2626;padding:30px 40px;text-align:center;">
+                                        <h1 style="color:#ffffff;font-size:24px;margin:0;font-weight:700;">🩸 Blood Match Found!</h1>
+                                        <p style="color:#fca5a5;margin:8px 0 0;font-size:14px;">A patient needs your help</p>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="padding:32px 40px;">
+                                        <h2 style="color:#0f172a;font-size:20px;margin:0 0 8px;">Hello ${donorName},</h2>
+                                        <p style="color:#475569;font-size:15px;line-height:1.6;margin:0 0 20px;">
+                                            <strong>🚨 A patient needs your blood type!</strong> You've been matched to a request.
+                                        </p>
+                                        <div style="background:#fef2f2;padding:16px 20px;border-radius:12px;margin-bottom:20px;border-left:4px solid #dc2626;">
+                                            <p style="margin:4px 0;font-size:14px;color:#0f172a;">
+                                                <strong>🏥 Hospital:</strong> ${request.hospital_location || 'Unknown'}
+                                            </p>
+                                            <p style="margin:4px 0;font-size:14px;color:#0f172a;">
+                                                <strong>🩸 Blood Type:</strong> ${request.blood_type}
+                                            </p>
+                                            <p style="margin:4px 0;font-size:14px;color:#0f172a;">
+                                                <strong>📦 Units Needed:</strong> ${request.units_needed}
+                                            </p>
+                                            <p style="margin:4px 0;font-size:14px;color:#0f172a;">
+                                                <strong>⚠️ Urgency:</strong> <span style="color:${request.urgency === 'critical' ? '#dc2626' : '#b45309'};font-weight:600;">${request.urgency.toUpperCase()}</span>
+                                            </p>
+                                            <p style="margin:4px 0;font-size:14px;color:#0f172a;">
+                                                <strong>📏 Your Distance:</strong> ${match.distance_km ? match.distance_km.toFixed(1) + ' km' : 'N/A'}
+                                            </p>
+                                            ${request.contact_phone ? `<p style="margin:4px 0;font-size:14px;color:#0f172a;"><strong>📞 Contact:</strong> ${request.contact_phone}</p>` : ''}
+                                        </div>
+                                        <div style="text-align:center;margin:24px 0;">
+                                            <a href="${window.location.origin}" style="display:inline-block;background:#dc2626;color:#ffffff;padding:12px 32px;border-radius:40px;text-decoration:none;font-weight:600;font-size:15px;">
+                                                View Match Details
+                                            </a>
+                                        </div>
+                                        <p style="color:#94a3b8;font-size:13px;text-align:center;margin:16px 0 0;border-top:1px solid #e2e8f0;padding-top:16px;">
+                                            ❤️ Your donation can save up to 3 lives. Thank you for being a hero!
+                                            <br>
+                                            <small>The Blood Commons · Pakistan</small>
+                                        </p>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                </table>
+            </body>
+            </html>
+        `;
+    }
+
+    // ============================================================
     // ⭐⭐⭐ THE MATCHING ENGINE ⭐⭐⭐
     // ============================================================
 
@@ -316,6 +483,27 @@
                     if (!insertError) {
                         matchCount++;
                         console.log('✅ Match created for:', match.source_type, match.source_name);
+                        
+                        // ============================================================
+                        // 📧 SEND EMAIL TO DONOR IF MATCHED
+                        // ============================================================
+                        if (match.source_type === 'donor') {
+                            const { data: donor } = await supabase
+                                .from('profiles')
+                                .select('email, full_name')
+                                .eq('id', match.source_id)
+                                .single();
+                            
+                            if (donor?.email) {
+                                const matchHtml = getMatchEmailTemplate(donor.full_name, request, match);
+                                await sendEmail(
+                                    donor.email,
+                                    '🩸 Urgent: You\'ve Been Matched to a Blood Request!',
+                                    matchHtml
+                                );
+                                console.log('📧 Match email sent to donor:', donor.email);
+                            }
+                        }
                     } else {
                         console.error('Error creating match:', insertError);
                     }
@@ -374,6 +562,25 @@
                         if (!insertError) {
                             matchCount++;
                             console.log('✅ Match created for:', match.source_type, match.source_name);
+                            
+                            // 📧 SEND EMAIL TO DONOR IF MATCHED
+                            if (match.source_type === 'donor') {
+                                const { data: donor } = await supabase
+                                    .from('profiles')
+                                    .select('email, full_name')
+                                    .eq('id', match.source_id)
+                                    .single();
+                                
+                                if (donor?.email) {
+                                    const matchHtml = getMatchEmailTemplate(donor.full_name, request, match);
+                                    await sendEmail(
+                                        donor.email,
+                                        '🩸 Urgent: You\'ve Been Matched to a Blood Request!',
+                                        matchHtml
+                                    );
+                                    console.log('📧 Match email sent to donor:', donor.email);
+                                }
+                            }
                         }
                     }
 
@@ -475,7 +682,18 @@
                     is_available: true,
                 });
 
-            showToast(DOM.donorSignUpToast, 'success', `✅ Welcome, ${name}!`);
+            // 📧 SEND WELCOME EMAIL
+            if (email) {
+                const welcomeHtml = getWelcomeEmailTemplate(name);
+                await sendEmail(
+                    email,
+                    '🩸 Welcome to The Blood Commons!',
+                    welcomeHtml
+                );
+                console.log('📧 Welcome email sent to:', email);
+            }
+
+            showToast(DOM.donorSignUpToast, 'success', `✅ Welcome, ${name}! Check your email.`);
 
             const { data: session } = await supabase.auth.getSession();
             if (session.session) {
@@ -488,6 +706,10 @@
             showToast(DOM.donorSignUpToast, 'error', error.message);
         }
     }
+
+    // ============================================================
+    // DONOR SIGN IN, LOAD PROFILE, DASHBOARD
+    // ============================================================
 
     async function handleDonorSignIn() {
         const cnic = DOM.donorSignInCnic.value.trim();
@@ -930,7 +1152,7 @@
     }
 
     // ============================================================
-    // HOSPITAL REQUESTS WITH MATCH DETAILS (NO FULFILL BUTTON)
+    // HOSPITAL REQUESTS WITH MATCH DETAILS
     // ============================================================
 
     let hospitalRequestData = [];
@@ -1225,7 +1447,6 @@
     async function updateBankRequests() {
         if (!STATE.currentBankId) return;
 
-        // Get requests that are either pending OR matched
         const { data: requests, error: reqError } = await supabase
             .from('blood_requests')
             .select('*, hospitals(*)')
@@ -1245,7 +1466,6 @@
             return;
         }
 
-        // Get matches for this bank
         const { data: matches, error: matchError } = await supabase
             .from('matches')
             .select('*')
@@ -1336,7 +1556,6 @@
             `;
         }).join('');
 
-        // Re-bind fulfill button events
         document.querySelectorAll('.bank-fulfill-btn').forEach(btn => {
             btn.addEventListener('click', async function() {
                 const requestId = this.dataset.id;
@@ -1344,7 +1563,6 @@
             });
         });
 
-        // Re-bind decline button events
         document.querySelectorAll('.bank-decline-btn').forEach(btn => {
             btn.addEventListener('click', async function() {
                 const requestId = this.dataset.id;
@@ -1359,7 +1577,6 @@
 
     async function handleBankFulfill(requestId) {
         try {
-            // 1. Get the request details
             const { data: request, error: reqError } = await supabase
                 .from('blood_requests')
                 .select('*')
@@ -1368,7 +1585,6 @@
             
             if (reqError) throw reqError;
             
-            // 2. Get the match for this request (bank match)
             let currentMatch;
             const { data: existingMatch, error: matchError } = await supabase
                 .from('matches')
@@ -1379,7 +1595,6 @@
                 .single();
             
             if (matchError || !existingMatch) {
-                // If no match exists, create one
                 const { data: newMatch, error: createError } = await supabase
                     .from('matches')
                     .insert({
@@ -1401,7 +1616,6 @@
                 currentMatch = existingMatch;
             }
             
-            // 3. Decrease inventory at the blood bank
             const { data: inventory, error: invError } = await supabase
                 .from('inventory')
                 .select('*')
@@ -1414,10 +1628,8 @@
                 return;
             }
             
-            // Calculate new stock
             const newUnits = Math.max(0, inventory.units_available - request.units_needed);
             
-            // 4. Update inventory
             const { error: updateError } = await supabase
                 .from('inventory')
                 .update({ 
@@ -1431,13 +1643,11 @@
                 return;
             }
             
-            // 5. Update request status to fulfilled
             await supabase
                 .from('blood_requests')
                 .update({ status: 'fulfilled' })
                 .eq('id', requestId);
             
-            // 6. Update match status
             await supabase
                 .from('matches')
                 .update({ status: 'completed' })
@@ -1446,7 +1656,6 @@
             showToast(DOM.bankToast, 'success', 
                 `✅ Request fulfilled! Inventory updated: ${request.blood_type} → ${newUnits} units left`);
             
-            // Refresh all dashboards
             updateBankRequests();
             updateBankInventory();
             updateHospitalInventory();
@@ -1464,13 +1673,11 @@
 
     async function handleBankDecline(requestId) {
         try {
-            // 1. Update request to cancelled
             await supabase
                 .from('blood_requests')
                 .update({ status: 'cancelled' })
                 .eq('id', requestId);
             
-            // 2. Update match to expired
             await supabase
                 .from('matches')
                 .update({ status: 'expired' })
@@ -1480,7 +1687,6 @@
             
             showToast(DOM.bankToast, 'info', 'Request declined.');
             
-            // Refresh all dashboards
             updateBankRequests();
             updateHospitalRequests();
             updateDonorRequests();
@@ -1508,6 +1714,7 @@
 
     function init() {
         console.log(`🩸 ${CONFIG.APP_NAME} — v${CONFIG.VERSION}`);
+        console.log('📧 EMAIL NOTIFICATIONS: Welcome & Match Alerts enabled');
         console.log('🧠 MATCHING ENGINE: Auto-matches donors to requests');
         console.log('📋 MATCH DETAILS: Shows source name, distance, contact');
         console.log('🏦 INVENTORY: Auto-updates when bank fulfills request');
@@ -1640,14 +1847,13 @@
         }
 
         console.log('✅ Application ready!');
+        console.log('📧 Welcome emails sent on sign-up');
+        console.log('📧 Match alerts sent when donors are matched');
         console.log('🧠 Matching Engine: Auto-matches when requests are created');
-        console.log('📋 Match Details: Shows source name, distance, contact info');
-        console.log('🏦 Inventory: Auto-updates when bank fulfills request');
         console.log('🏥 Hospital: HOSP-001 / hospital123');
         console.log('🏢 Bank: BANK-001 / bank123');
         console.log('🩸 Donor: Sign up with CNIC');
         
-        // Add test function to window
         window.testMatch = async function(requestId) {
             if (!requestId) {
                 const { data: requests } = await supabase
