@@ -1,6 +1,6 @@
 // ============================================================
 // THE BLOOD COMMONS — PAKISTAN
-// FINAL FIXED VERSION — v5.0
+// FULLY WORKING BACKEND — v5.0
 // ============================================================
 
 (function() {
@@ -12,7 +12,6 @@
     const CONFIG = {
         SUPABASE_URL: 'https://ctsnlmsvgkbbcattzfjc.supabase.co',
         SUPABASE_ANON_KEY: 'sb_publishable_X0nyDu5GH0i3xT16wP7-Lg_XO7sr3nI',
-        RESEND_API_KEY: 're_d4Dra5Za_HLmGA9PzA8wbH3DXW2oeCeNi',
         APP_NAME: 'The Blood Commons — Pakistan',
         VERSION: '5.0'
     };
@@ -67,16 +66,11 @@
             bank: document.getElementById('pageBank')
         };
 
-        // Header
-        DOM.pageTitle = document.getElementById('pageTitle');
-        DOM.pageSubtitle = document.getElementById('pageSubtitle');
+        // Sidebar User Display
+        DOM.sidebarUser = document.getElementById('sidebarUser');
+        DOM.sidebarUserName = document.getElementById('sidebarUserName');
+        DOM.sidebarUserRole = document.getElementById('sidebarUserRole');
         DOM.globalLogoutBtn = document.getElementById('globalLogoutBtn');
-
-        // User Display
-        DOM.userDisplay = document.getElementById('userDisplay');
-        DOM.userDisplayName = document.getElementById('userDisplayName');
-        DOM.userDisplayRole = document.getElementById('userDisplayRole');
-        DOM.userAvatar = document.getElementById('userAvatar');
 
         // Donor
         DOM.donorAuthSection = document.getElementById('donorAuthSection');
@@ -143,7 +137,7 @@
         DOM.hLocation = document.getElementById('hLocation');
         DOM.hContact = document.getElementById('hContact');
 
-        // Filters
+        // Hospital Filters
         DOM.filterBank = document.getElementById('filterBank');
         DOM.filterBloodType = document.getElementById('filterBloodType');
         DOM.filterStockStatus = document.getElementById('filterStockStatus');
@@ -185,9 +179,6 @@
         DOM.bankFilterUrgency = document.getElementById('bankFilterUrgency');
         DOM.clearBankRequestFilters = document.getElementById('clearBankRequestFilters');
 
-        DOM.mobileToggle = document.getElementById('mobileToggle');
-        DOM.sidebar = document.getElementById('sidebar');
-
         console.log('✅ DOM references cached');
     }
 
@@ -216,52 +207,42 @@
         return R * c;
     }
 
-    function updateUserDisplay(name, role) {
+    function updateSidebarUser(name, role) {
         if (name) {
-            DOM.userDisplay.classList.add('show');
-            DOM.userDisplayName.textContent = name;
-            DOM.userDisplayRole.textContent = role || 'Donor';
-            DOM.userAvatar.textContent = name.charAt(0).toUpperCase();
+            DOM.sidebarUser.classList.add('show');
+            DOM.sidebarUserName.textContent = name;
+            DOM.sidebarUserRole.textContent = role || 'Donor';
         } else {
-            DOM.userDisplay.classList.remove('show');
+            DOM.sidebarUser.classList.remove('show');
         }
     }
 
-    function navigateTo(page) {
-        const titles = {
-            landing: 'The Blood Commons',
-            donor: 'Donor Dashboard',
-            hospital: 'Hospital Dashboard',
-            bank: 'Blood Bank Admin'
-        };
-        const subtitles = {
-            landing: 'Pakistan',
-            donor: 'Donor Portal',
-            hospital: 'Hospital Portal',
-            bank: 'Bank Admin Portal'
-        };
+    // ============================================================
+    // NAVIGATION
+    // ============================================================
 
+    function navigateTo(page) {
         DOM.navItems.forEach(item => {
             item.classList.toggle('active', item.dataset.page === page);
         });
 
         Object.keys(DOM.pages).forEach(key => {
             if (DOM.pages[key]) {
-                DOM.pages[key].classList.toggle('active', key === page);
+                DOM.pages[key].style.display = key === page ? 'block' : 'none';
             }
         });
 
-        DOM.pageTitle.textContent = titles[page] || 'The Blood Commons';
-        DOM.pageSubtitle.textContent = subtitles[page] || 'Pakistan';
-        DOM.sidebar.classList.remove('open');
+        // Close sidebar
+        if (typeof closeSidebar === 'function') {
+            closeSidebar();
+        }
     }
 
     // ============================================================
-    // ⭐⭐⭐ FINAL FIXED DONOR SIGN-UP ⭐⭐⭐
+    // ⭐ DONOR SIGN-UP
     // ============================================================
 
     async function handleDonorSignUp() {
-        // Get form values
         const name = DOM.donorName.value.trim();
         const email = DOM.donorEmail.value.trim();
         const cnic = DOM.donorCnic.value.trim();
@@ -270,7 +251,6 @@
         const phone = DOM.donorPhoneSignup.value.trim();
         const password = DOM.donorPasswordSignup.value;
 
-        // Validate
         if (!name || !email || !cnic || !bloodType || !city || !phone || !password) {
             showToast(DOM.donorSignUpToast, 'error', '⚠️ Please fill in all required fields.');
             return;
@@ -289,57 +269,44 @@
         try {
             console.log('📝 Attempting sign-up for:', email);
 
-            // 🔍 STEP 1: Check if CNIC already exists
-            const { data: existingCnic, error: cnicError } = await supabase
+            // Check if CNIC exists
+            const { data: existingCnic } = await supabase
                 .from('profiles')
                 .select('cnic')
                 .eq('cnic', cnic)
                 .maybeSingle();
-
-            if (cnicError) {
-                console.warn('CNIC check error:', cnicError);
-            }
 
             if (existingCnic) {
                 showToast(DOM.donorSignUpToast, 'error', `❌ CNIC ${cnic} is already registered.`);
                 return;
             }
 
-            // 🔍 STEP 2: Check if Email already exists in profiles
-            const { data: existingEmail, error: emailCheckError } = await supabase
+            // Check if Email exists
+            const { data: existingEmail } = await supabase
                 .from('profiles')
                 .select('email')
                 .eq('email', email)
                 .maybeSingle();
-
-            if (emailCheckError) {
-                console.warn('Email check error:', emailCheckError);
-            }
 
             if (existingEmail) {
                 showToast(DOM.donorSignUpToast, 'error', `❌ Email "${email}" is already registered.`);
                 return;
             }
 
-            // 🔍 STEP 3: SIGN UP - WITHOUT ANY METADATA (CRITICAL!)
-            console.log('🔄 Creating auth user...');
-            
+            // Sign up
             const { data: authData, error: authError } = await supabase.auth.signUp({
                 email: email,
                 password: password
-                // ⭐ NO options.data - this was causing the 500 error!
             });
 
             if (authError) {
                 console.error('❌ Auth Error:', authError);
-                
                 if (authError.message.includes('User already registered')) {
                     showToast(DOM.donorSignUpToast, 'error', `❌ Email "${email}" is already registered.`);
                     DOM.donorSignInTab.click();
                     DOM.donorSignInCnic.value = cnic;
                     return;
                 }
-                
                 showToast(DOM.donorSignUpToast, 'error', `❌ ${authError.message}`);
                 return;
             }
@@ -351,31 +318,20 @@
 
             console.log('✅ Auth user created:', authData.user.id);
 
-            // ⭐ STEP 4: Wait for auth to fully process
-            await new Promise(resolve => setTimeout(resolve, 1500));
-
-            // ⭐ STEP 5: Update user metadata in a SEPARATE call
+            // Update metadata
             try {
-                console.log('🔄 Updating user metadata...');
-                const { error: updateError } = await supabase.auth.updateUser({
+                await supabase.auth.updateUser({
                     data: {
                         full_name: name,
                         user_type: 'donor',
                         cnic: cnic
                     }
                 });
-                if (updateError) {
-                    console.warn('⚠️ Metadata update warning:', updateError);
-                } else {
-                    console.log('✅ Metadata updated');
-                }
             } catch (e) {
-                console.warn('⚠️ Metadata update failed:', e);
+                console.warn('⚠️ Metadata update warning:', e);
             }
 
-            // ⭐ STEP 6: Create profile manually
-            console.log('🔄 Creating profile...');
-            
+            // Create profile
             const { error: profileError } = await supabase
                 .from('profiles')
                 .insert({
@@ -400,7 +356,7 @@
 
             console.log('✅ Profile created successfully');
 
-            // ⭐ STEP 7: Try to auto-login
+            // Auto-login
             const { data: sessionData } = await supabase.auth.getSession();
             if (sessionData.session) {
                 STATE.currentUser = sessionData.session.user;
@@ -420,7 +376,7 @@
     }
 
     // ============================================================
-    // DONOR SIGN IN (FIXED)
+    // ⭐ DONOR SIGN-IN
     // ============================================================
 
     async function handleDonorSignIn() {
@@ -433,7 +389,7 @@
         }
 
         try {
-            // First, find user by CNIC from profiles table
+            // Find user by CNIC
             const { data: profileData, error: profileError } = await supabase
                 .from('profiles')
                 .select('*')
@@ -445,9 +401,8 @@
                 return;
             }
 
-            // Check if profile has an email
             if (!profileData.email) {
-                showToast(DOM.donorSignInToast, 'error', '❌ Account found but email is missing. Please contact support.');
+                showToast(DOM.donorSignInToast, 'error', '❌ Account found but email is missing.');
                 return;
             }
 
@@ -479,7 +434,7 @@
     }
 
     // ============================================================
-    // DONOR LOAD PROFILE & DASHBOARD
+    // ⭐ DONOR PROFILE & DASHBOARD
     // ============================================================
 
     async function loadDonorProfile() {
@@ -500,7 +455,9 @@
                 DOM.donorBloodTypeProfile.value = profile.blood_type || 'B+';
                 DOM.donorCityProfile.value = profile.city || '';
                 DOM.donorPhoneProfile.value = profile.phone || '';
-                updateUserDisplay(profile.full_name, 'Donor');
+                updateSidebarUser(profile.full_name, 'Donor');
+                DOM.globalLogoutBtn.style.display = 'block';
+                DOM.globalLogoutBtn.classList.add('show');
             }
         } catch (e) {
             console.error('Profile error:', e);
@@ -511,7 +468,6 @@
         DOM.donorAuthSection.style.display = 'none';
         DOM.donorDashboardContent.classList.add('show');
         DOM.donorLoginStatus.classList.add('show');
-        DOM.globalLogoutBtn.style.display = 'flex';
         updateDonorToggle();
         updateDonorRequests();
         initDonorMap();
@@ -527,13 +483,15 @@
         DOM.donorDashboardContent.classList.remove('show');
         DOM.donorLoginStatus.classList.remove('show');
         DOM.globalLogoutBtn.style.display = 'none';
+        DOM.globalLogoutBtn.classList.remove('show');
 
         try { if (DOM.donorSignUpForm) DOM.donorSignUpForm.reset(); } catch (e) {}
         try { if (DOM.donorSignInForm) DOM.donorSignInForm.reset(); } catch (e) {}
 
         if (DOM.donorSignUpTab) DOM.donorSignUpTab.click();
         STATE.mapInitialized = false;
-        updateUserDisplay(null);
+        updateSidebarUser(null);
+        navigateTo('landing');
     }
 
     function updateDonorToggle() {
@@ -597,273 +555,7 @@
     }
 
     // ============================================================
-    // EMAIL FUNCTIONS
-    // ============================================================
-
-    async function sendEmail(to, subject, html) {
-        if (!CONFIG.RESEND_API_KEY) {
-            console.log('📧 Email not sent: No API key configured');
-            return null;
-        }
-
-        try {
-            const response = await fetch('https://api.resend.com/emails', {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${CONFIG.RESEND_API_KEY}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    from: 'The Blood Commons <noreply@bloodcommons.com>',
-                    to: to,
-                    subject: subject,
-                    html: html
-                })
-            });
-            const data = await response.json();
-            console.log('📧 Email sent:', data);
-            return data;
-        } catch (error) {
-            console.error('📧 Email error:', error);
-            return null;
-        }
-    }
-
-    function getWelcomeEmailTemplate(name) {
-        return `
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <meta charset="UTF-8">
-                <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                <title>Welcome to The Blood Commons</title>
-            </head>
-            <body style="margin:0;padding:0;font-family:'Segoe UI',Arial,sans-serif;background:#f1f5f9;">
-                <table width="100%" cellpadding="0" cellspacing="0" style="background:#f1f5f9;padding:20px 0;">
-                    <tr>
-                        <td align="center">
-                            <table width="100%" max-width="600" cellpadding="0" cellspacing="0" style="max-width:600px;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,0.06);">
-                                <tr>
-                                    <td style="background:#dc2626;padding:30px 40px;text-align:center;">
-                                        <h1 style="color:#ffffff;font-size:24px;margin:0;font-weight:700;">🩸 Welcome to The Blood Commons</h1>
-                                        <p style="color:#fca5a5;margin:8px 0 0;font-size:14px;">Pakistan · Every Drop, Connected.</p>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td style="padding:32px 40px;">
-                                        <h2 style="color:#0f172a;font-size:20px;margin:0 0 8px;">Hello ${name},</h2>
-                                        <p style="color:#475569;font-size:15px;line-height:1.6;margin:0 0 20px;">
-                                            Thank you for registering as a donor on <strong>The Blood Commons</strong>! 🎉
-                                        </p>
-                                        <p style="color:#475569;font-size:15px;line-height:1.6;margin:0 0 20px;">
-                                            You are now part of a life-saving community.
-                                        </p>
-                                        <div style="background:#f8fafc;padding:16px 20px;border-radius:12px;margin-bottom:20px;">
-                                            <p style="margin:4px 0;font-size:14px;color:#0f172a;">
-                                                <strong>📝 What's next?</strong>
-                                            </p>
-                                            <p style="margin:4px 0;font-size:14px;color:#475569;">
-                                                1️⃣ Toggle <strong>"Available Now"</strong> when you can donate
-                                            </p>
-                                            <p style="margin:4px 0;font-size:14px;color:#475569;">
-                                                2️⃣ When matched, you'll get a notification
-                                            </p>
-                                        </div>
-                                        <div style="text-align:center;margin:24px 0;">
-                                            <a href="https://blood-commons-pakistan.vercel.app/" style="display:inline-block;background:#dc2626;color:#ffffff;padding:12px 32px;border-radius:40px;text-decoration:none;font-weight:600;font-size:15px;">
-                                                Go to Dashboard
-                                            </a>
-                                        </div>
-                                        <p style="color:#94a3b8;font-size:13px;text-align:center;margin:16px 0 0;border-top:1px solid #e2e8f0;padding-top:16px;">
-                                            ❤️ Every donation can save up to 3 lives. You are a hero!
-                                            <br>
-                                            <small>The Blood Commons · Pakistan</small>
-                                        </p>
-                                    </td>
-                                </tr>
-                            </table>
-                        </td>
-                    </tr>
-                </table>
-            </body>
-            </html>
-        `;
-    }
-
-    // ============================================================
-    // MATCHING ENGINE (shortened but functional)
-    // ============================================================
-
-    async function findBestMatch(requestId) {
-        try {
-            console.log('🔍 Starting matching engine for request:', requestId);
-
-            const { data: request, error } = await supabase
-                .from('blood_requests')
-                .select('*')
-                .eq('id', requestId)
-                .single();
-
-            if (error) throw error;
-
-            let radius;
-            if (request.urgency === 'critical') radius = 20;
-            else if (request.urgency === 'urgent') radius = 30;
-            else radius = 50;
-
-            const { data: matches, error: matchError } = await supabase
-                .rpc('find_best_match', {
-                    req_blood_type: request.blood_type,
-                    req_lat: request.latitude || 31.5204,
-                    req_lng: request.longitude || 74.3587,
-                    req_urgency: request.urgency,
-                    radius_km: radius
-                });
-
-            if (matchError) throw matchError;
-
-            if (matches && matches.length > 0) {
-                console.log('✅ Found', matches.length, 'matches');
-
-                for (const match of matches) {
-                    await supabase
-                        .from('matches')
-                        .insert({
-                            request_id: requestId,
-                            source_type: match.source_type,
-                            source_id: match.source_id,
-                            distance_km: match.distance_km,
-                            status: 'pending'
-                        });
-                }
-
-                await supabase
-                    .from('blood_requests')
-                    .update({ status: 'matched' })
-                    .eq('id', requestId);
-
-                updateDonorRequests();
-                updateHospitalRequests();
-                updateBankRequests();
-
-                return matches;
-            } else {
-                console.log('❌ No matches found');
-                return [];
-            }
-
-        } catch (error) {
-            console.error('❌ Match engine error:', error);
-            return null;
-        }
-    }
-
-    // ============================================================
-    // DONOR REQUESTS
-    // ============================================================
-
-    async function updateDonorRequests() {
-        const { data: requests } = await supabase
-            .from('blood_requests')
-            .select('*')
-            .eq('status', 'pending')
-            .order('created_at', { ascending: false })
-            .limit(10);
-
-        if (!requests || requests.length === 0) {
-            DOM.donorRequestsTable.innerHTML =
-                `<tr><td colspan="4" style="text-align:center;color:#64748b;padding:20px;">No pending requests.</td></tr>`;
-            return;
-        }
-
-        DOM.donorRequestsTable.innerHTML = requests.map(req => `
-            <tr>
-                <td><strong>${req.blood_type}</strong></td>
-                <td>${req.hospital_location || 'Unknown'}</td>
-                <td><span class="status-badge ${req.urgency === 'critical' ? 'critical' : ''}" style="${req.urgency === 'urgent' ? 'background:#fef3c7;color:#b45309;' : req.urgency === 'routine' ? 'background:#dbeafe;color:#1d4ed8;' : ''}">${req.urgency.charAt(0).toUpperCase() + req.urgency.slice(1)}</span></td>
-                <td><span class="status-badge pending">Pending</span></td>
-            </tr>
-        `).join('');
-    }
-
-    // ============================================================
-    // DONOR MAP
-    // ============================================================
-
-    function initDonorMap() {
-        if (STATE.mapInitialized || !STATE.userLocation.lat) {
-            if (!STATE.userLocation.lat) detectLocation();
-            return;
-        }
-
-        STATE.mapInitialized = true;
-
-        try {
-            DOM.donorMap.innerHTML = '';
-            STATE.map = L.map('donorMap').setView([STATE.userLocation.lat, STATE.userLocation.lng], 13);
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '© OpenStreetMap'
-            }).addTo(STATE.map);
-
-            L.marker([STATE.userLocation.lat, STATE.userLocation.lng], {
-                icon: L.divIcon({
-                    className: 'custom-div-icon',
-                    html: '<div style="background:#ef4444;width:16px;height:16px;border-radius:50%;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.3);"></div>',
-                    iconSize: [16, 16],
-                    iconAnchor: [8, 8],
-                })
-            }).addTo(STATE.map).bindPopup('📍 Your Location');
-
-            supabase.from('blood_banks').select('*').then(({ data: banks }) => {
-                if (!banks) return;
-                const bounds = L.latLngBounds([[STATE.userLocation.lat, STATE.userLocation.lng]]);
-                banks.forEach(bank => {
-                    if (!bank.latitude || !bank.longitude) return;
-                    const distance = haversineDistance(STATE.userLocation.lat, STATE.userLocation.lng, bank.latitude, bank.longitude);
-                    const marker = L.marker([bank.latitude, bank.longitude], {
-                        icon: L.divIcon({
-                            className: 'custom-div-icon',
-                            html: `<div style="background:#dc2626;width:28px;height:28px;border-radius:50%;border:3px solid white;display:flex;align-items:center;justify-content:center;font-size:14px;color:white;font-weight:bold;">🩸</div>`,
-                            iconSize: [28, 28],
-                            iconAnchor: [14, 14],
-                        })
-                    }).addTo(STATE.map);
-                    marker.bindPopup(`<strong>${bank.bank_name}</strong><br>📍 ${distance.toFixed(1)} km away`);
-                    bounds.extend([bank.latitude, bank.longitude]);
-                });
-                STATE.map.fitBounds(bounds, { padding: [50, 50] });
-            });
-
-        } catch (e) {
-            console.warn('Map error:', e);
-        }
-    }
-
-    function detectLocation() {
-        if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(
-                function(pos) {
-                    STATE.userLocation.lat = pos.coords.latitude;
-                    STATE.userLocation.lng = pos.coords.longitude;
-                    if (DOM.donorLocationStatus) {
-                        DOM.donorLocationStatus.innerHTML = `✅ Location: ${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)}`;
-                    }
-                    initDonorMap();
-                },
-                function() {
-                    STATE.userLocation.lat = 31.5204;
-                    STATE.userLocation.lng = 74.3587;
-                    if (DOM.donorLocationStatus) {
-                        DOM.donorLocationStatus.innerHTML = '⚠️ Using Lahore (31.5204, 74.3587)';
-                    }
-                    initDonorMap();
-                }
-            );
-        }
-    }
-
-    // ============================================================
-    // HOSPITAL FUNCTIONS (Shortened)
+    // ⭐ HOSPITAL LOGIN
     // ============================================================
 
     async function handleHospitalLogin() {
@@ -883,7 +575,7 @@
                 .single();
 
             if (error || !hospital) {
-                showToast(DOM.hospitalLoginToast, 'error', 'Invalid Hospital ID.');
+                showToast(DOM.hospitalLoginToast, 'error', '❌ Invalid Hospital ID.');
                 return;
             }
 
@@ -896,14 +588,15 @@
                 DOM.hospitalDashboardContent.classList.add('show');
                 DOM.hospitalLoginStatus.classList.add('show');
                 DOM.hospitalLoggedName.textContent = hospital.hospital_name;
-                DOM.globalLogoutBtn.style.display = 'flex';
-                updateUserDisplay(hospital.hospital_name, 'Hospital');
+                DOM.globalLogoutBtn.style.display = 'block';
+                DOM.globalLogoutBtn.classList.add('show');
+                updateSidebarUser(hospital.hospital_name, 'Hospital');
 
                 updateHospitalInventory();
                 updateHospitalRequests();
                 showToast(DOM.hospitalLoginToast, 'success', `✅ Logged in as ${hospital.hospital_name}`);
             } else {
-                showToast(DOM.hospitalLoginToast, 'error', 'Invalid password.');
+                showToast(DOM.hospitalLoginToast, 'error', '❌ Invalid password.');
             }
         } catch (error) {
             showToast(DOM.hospitalLoginToast, 'error', error.message);
@@ -918,10 +611,16 @@
         DOM.hospitalDashboardContent.classList.remove('show');
         DOM.hospitalLoginStatus.classList.remove('show');
         DOM.globalLogoutBtn.style.display = 'none';
+        DOM.globalLogoutBtn.classList.remove('show');
         DOM.hospitalId.value = '';
         DOM.hospitalPassword.value = '';
-        updateUserDisplay(null);
+        updateSidebarUser(null);
+        navigateTo('landing');
     }
+
+    // ============================================================
+    // ⭐ HOSPITAL DASHBOARD FUNCTIONS
+    // ============================================================
 
     function toggleHospitalRequestForm() {
         DOM.hospitalRequestForm.style.display =
@@ -988,7 +687,7 @@
     }
 
     // ============================================================
-    // HOSPITAL INVENTORY
+    // ⭐ HOSPITAL INVENTORY
     // ============================================================
 
     let inventoryData = [];
@@ -1046,7 +745,7 @@
     }
 
     // ============================================================
-    // HOSPITAL REQUESTS
+    // ⭐ HOSPITAL REQUESTS
     // ============================================================
 
     let hospitalRequestData = [];
@@ -1143,7 +842,7 @@
     }
 
     // ============================================================
-    // BANK FUNCTIONS (Shortened)
+    // ⭐ BANK LOGIN
     // ============================================================
 
     async function handleBankLogin() {
@@ -1163,7 +862,7 @@
                 .single();
 
             if (error || !bank) {
-                showToast(DOM.bankLoginToast, 'error', 'Invalid Bank ID.');
+                showToast(DOM.bankLoginToast, 'error', '❌ Invalid Bank ID.');
                 return;
             }
 
@@ -1176,14 +875,15 @@
                 DOM.bankDashboardContent.classList.add('show');
                 DOM.bankLoginStatus.classList.add('show');
                 DOM.bankLoggedName.textContent = bank.bank_name;
-                DOM.globalLogoutBtn.style.display = 'flex';
-                updateUserDisplay(bank.bank_name, 'Blood Bank');
+                DOM.globalLogoutBtn.style.display = 'block';
+                DOM.globalLogoutBtn.classList.add('show');
+                updateSidebarUser(bank.bank_name, 'Blood Bank');
 
                 updateBankInventory();
                 updateBankRequests();
                 showToast(DOM.bankLoginToast, 'success', `✅ Logged in as ${bank.bank_name}`);
             } else {
-                showToast(DOM.bankLoginToast, 'error', 'Invalid password.');
+                showToast(DOM.bankLoginToast, 'error', '❌ Invalid password.');
             }
         } catch (error) {
             showToast(DOM.bankLoginToast, 'error', error.message);
@@ -1198,10 +898,16 @@
         DOM.bankDashboardContent.classList.remove('show');
         DOM.bankLoginStatus.classList.remove('show');
         DOM.globalLogoutBtn.style.display = 'none';
+        DOM.globalLogoutBtn.classList.remove('show');
         DOM.bankId.value = '';
         DOM.bankPassword.value = '';
-        updateUserDisplay(null);
+        updateSidebarUser(null);
+        navigateTo('landing');
     }
+
+    // ============================================================
+    // ⭐ BANK DASHBOARD FUNCTIONS
+    // ============================================================
 
     function toggleBankStockForm() {
         DOM.bankStockForm.style.display =
@@ -1243,7 +949,7 @@
     }
 
     // ============================================================
-    // BANK INVENTORY
+    // ⭐ BANK INVENTORY
     // ============================================================
 
     let bankInventoryData = [];
@@ -1311,7 +1017,7 @@
     }
 
     // ============================================================
-    // BANK REQUESTS
+    // ⭐ BANK REQUESTS
     // ============================================================
 
     let bankRequestData = [];
@@ -1530,40 +1236,210 @@
     }
 
     // ============================================================
-    // GLOBAL LOGOUT
+    // ⭐ MATCHING ENGINE
     // ============================================================
 
-    function handleGlobalLogout() {
-        if (DOM.donorLoginStatus.classList.contains('show')) handleDonorLogout();
-        if (DOM.hospitalLoginStatus.classList.contains('show')) handleHospitalLogout();
-        if (DOM.bankLoginStatus.classList.contains('show')) handleBankLogout();
-        DOM.globalLogoutBtn.style.display = 'none';
-        updateUserDisplay(null);
+    async function findBestMatch(requestId) {
+        try {
+            console.log('🔍 Starting matching engine for request:', requestId);
+
+            const { data: request, error } = await supabase
+                .from('blood_requests')
+                .select('*')
+                .eq('id', requestId)
+                .single();
+
+            if (error) throw error;
+
+            let radius;
+            if (request.urgency === 'critical') radius = 20;
+            else if (request.urgency === 'urgent') radius = 30;
+            else radius = 50;
+
+            const { data: matches, error: matchError } = await supabase
+                .rpc('find_best_match', {
+                    req_blood_type: request.blood_type,
+                    req_lat: request.latitude || 31.5204,
+                    req_lng: request.longitude || 74.3587,
+                    req_urgency: request.urgency,
+                    radius_km: radius
+                });
+
+            if (matchError) throw matchError;
+
+            if (matches && matches.length > 0) {
+                console.log('✅ Found', matches.length, 'matches');
+
+                for (const match of matches) {
+                    await supabase
+                        .from('matches')
+                        .insert({
+                            request_id: requestId,
+                            source_type: match.source_type,
+                            source_id: match.source_id,
+                            distance_km: match.distance_km,
+                            status: 'pending'
+                        });
+                }
+
+                await supabase
+                    .from('blood_requests')
+                    .update({ status: 'matched' })
+                    .eq('id', requestId);
+
+                updateDonorRequests();
+                updateHospitalRequests();
+                updateBankRequests();
+
+                return matches;
+            } else {
+                console.log('❌ No matches found');
+                return [];
+            }
+
+        } catch (error) {
+            console.error('❌ Match engine error:', error);
+            return null;
+        }
     }
 
     // ============================================================
-    // INITIALIZATION
+    // ⭐ DONOR REQUESTS
+    // ============================================================
+
+    async function updateDonorRequests() {
+        const { data: requests } = await supabase
+            .from('blood_requests')
+            .select('*')
+            .eq('status', 'pending')
+            .order('created_at', { ascending: false })
+            .limit(10);
+
+        if (!requests || requests.length === 0) {
+            DOM.donorRequestsTable.innerHTML =
+                `<tr><td colspan="4" style="text-align:center;color:#64748b;padding:20px;">No pending requests.</td></tr>`;
+            return;
+        }
+
+        DOM.donorRequestsTable.innerHTML = requests.map(req => `
+            <tr>
+                <td><strong>${req.blood_type}</strong></td>
+                <td>${req.hospital_location || 'Unknown'}</td>
+                <td><span class="status-badge ${req.urgency === 'critical' ? 'critical' : ''}" style="${req.urgency === 'urgent' ? 'background:#fef3c7;color:#b45309;' : req.urgency === 'routine' ? 'background:#dbeafe;color:#1d4ed8;' : ''}">${req.urgency.charAt(0).toUpperCase() + req.urgency.slice(1)}</span></td>
+                <td><span class="status-badge pending">Pending</span></td>
+            </tr>
+        `).join('');
+    }
+
+    // ============================================================
+    // ⭐ DONOR MAP
+    // ============================================================
+
+    function initDonorMap() {
+        if (STATE.mapInitialized || !STATE.userLocation.lat) {
+            if (!STATE.userLocation.lat) detectLocation();
+            return;
+        }
+
+        STATE.mapInitialized = true;
+
+        try {
+            DOM.donorMap.innerHTML = '';
+            STATE.map = L.map('donorMap').setView([STATE.userLocation.lat, STATE.userLocation.lng], 13);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap'
+            }).addTo(STATE.map);
+
+            L.marker([STATE.userLocation.lat, STATE.userLocation.lng], {
+                icon: L.divIcon({
+                    className: 'custom-div-icon',
+                    html: '<div style="background:#ef4444;width:16px;height:16px;border-radius:50%;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.3);"></div>',
+                    iconSize: [16, 16],
+                    iconAnchor: [8, 8],
+                })
+            }).addTo(STATE.map).bindPopup('📍 Your Location');
+
+            supabase.from('blood_banks').select('*').then(({ data: banks }) => {
+                if (!banks) return;
+                const bounds = L.latLngBounds([[STATE.userLocation.lat, STATE.userLocation.lng]]);
+                banks.forEach(bank => {
+                    if (!bank.latitude || !bank.longitude) return;
+                    const distance = haversineDistance(STATE.userLocation.lat, STATE.userLocation.lng, bank.latitude, bank.longitude);
+                    const marker = L.marker([bank.latitude, bank.longitude], {
+                        icon: L.divIcon({
+                            className: 'custom-div-icon',
+                            html: `<div style="background:#dc2626;width:28px;height:28px;border-radius:50%;border:3px solid white;display:flex;align-items:center;justify-content:center;font-size:14px;color:white;font-weight:bold;">🩸</div>`,
+                            iconSize: [28, 28],
+                            iconAnchor: [14, 14],
+                        })
+                    }).addTo(STATE.map);
+                    marker.bindPopup(`<strong>${bank.bank_name}</strong><br>📍 ${distance.toFixed(1)} km away`);
+                    bounds.extend([bank.latitude, bank.longitude]);
+                });
+                STATE.map.fitBounds(bounds, { padding: [50, 50] });
+            });
+
+        } catch (e) {
+            console.warn('Map error:', e);
+        }
+    }
+
+    function detectLocation() {
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                function(pos) {
+                    STATE.userLocation.lat = pos.coords.latitude;
+                    STATE.userLocation.lng = pos.coords.longitude;
+                    if (DOM.donorLocationStatus) {
+                        DOM.donorLocationStatus.innerHTML = `✅ Location: ${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)}`;
+                    }
+                    initDonorMap();
+                },
+                function() {
+                    STATE.userLocation.lat = 31.5204;
+                    STATE.userLocation.lng = 74.3587;
+                    if (DOM.donorLocationStatus) {
+                        DOM.donorLocationStatus.innerHTML = '⚠️ Using Lahore (31.5204, 74.3587)';
+                    }
+                    initDonorMap();
+                }
+            );
+        }
+    }
+
+    // ============================================================
+    // ⭐ GLOBAL LOGOUT
+    // ============================================================
+
+    function handleGlobalLogout() {
+        if (DOM.donorLoginStatus && DOM.donorLoginStatus.classList.contains('show')) {
+            handleDonorLogout();
+        } else if (DOM.hospitalLoginStatus && DOM.hospitalLoginStatus.classList.contains('show')) {
+            handleHospitalLogout();
+        } else if (DOM.bankLoginStatus && DOM.bankLoginStatus.classList.contains('show')) {
+            handleBankLogout();
+        }
+        DOM.globalLogoutBtn.style.display = 'none';
+        DOM.globalLogoutBtn.classList.remove('show');
+        updateSidebarUser(null);
+        navigateTo('landing');
+    }
+
+    // ============================================================
+    // ⭐ INITIALIZATION
     // ============================================================
 
     function init() {
         console.log(`🩸 ${CONFIG.APP_NAME} — v${CONFIG.VERSION}`);
-        console.log('🔧 DONOR SIGN-UP: FIXED for Vercel');
-        console.log('🧠 MATCHING ENGINE: Auto-matches donors to requests');
-        console.log('📧 EMAIL NOTIFICATIONS: Welcome & Match Alerts enabled');
+        console.log('🔧 FULLY WORKING BACKEND');
 
         cacheDomReferences();
 
         // Navigation
         DOM.navItems.forEach(item => {
-            item.addEventListener('click', function() { navigateTo(this.dataset.page); });
-        });
-
-        document.querySelectorAll('.role-card[data-role]').forEach(card => {
-            card.addEventListener('click', function() { navigateTo(this.dataset.role); });
-        });
-
-        DOM.mobileToggle.addEventListener('click', function() {
-            DOM.sidebar.classList.toggle('open');
+            item.addEventListener('click', function() {
+                navigateTo(this.dataset.page);
+            });
         });
 
         // Donor Auth Tabs
@@ -1666,6 +1542,7 @@
         updateBankInventory();
         updateBankRequests();
 
+        // Check for existing session
         if (supabase) {
             supabase.auth.getSession().then(({ data: { session } }) => {
                 if (session) {
@@ -1679,27 +1556,6 @@
         console.log('🔑 DONOR: Sign up with CNIC + Email + Password');
         console.log('🏥 Hospital: HOSP-001 / hospital123');
         console.log('🏢 Bank: BANK-001 / bank123');
-        console.log('📧 Email notifications: Welcome & Match alerts');
-
-        // Test function
-        window.testMatch = async function(requestId) {
-            if (!requestId) {
-                const { data: requests } = await supabase
-                    .from('blood_requests')
-                    .select('id')
-                    .eq('status', 'pending')
-                    .order('created_at', { ascending: false })
-                    .limit(1);
-                if (requests && requests.length > 0) {
-                    requestId = requests[0].id;
-                } else {
-                    console.log('❌ No pending requests found');
-                    return;
-                }
-            }
-            console.log('🧪 Manually testing match for:', requestId);
-            return await findBestMatch(requestId);
-        };
     }
 
     // ============================================================
